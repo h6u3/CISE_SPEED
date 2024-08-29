@@ -1,0 +1,62 @@
+.navbar {
+    display: flex;
+    position: relative;
+    top: 0;
+    flex-direction: row;
+    width: 100%;
+    background-color: darkblue;
+    align-items: center;
+    color: aliceblue;
+    font-size: 1.5em;
+    font-weight: bold;
+    transition: top 0.5s;
+    height: fit-content;
+  }
+  
+  .hide {
+    top: -3em;
+  }
+  
+  .navitem {
+    position: relative;
+    padding: 1em;
+    width: auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    cursor: default;
+    white-space: nowrap;
+  }
+  
+  .clickable {
+    @extend .navitem;
+    cursor: pointer;
+  }
+  
+  .clickable:hover {
+    backdrop-filter: brightness(50%);
+  }
+  
+  .dropdown_container {
+    visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    background-color: darkblue;
+    position: absolute;
+    top: 100%;
+    right: 0;
+  }
+  
+  .dropdown:hover {
+    cursor: pointer;
+    backdrop-filter: brightness(50%);
+  
+    .dropdown_container {
+      visibility: visible;
+    }
+  }
+  
+  .end {
+    margin-left: auto;
+  }
+  
