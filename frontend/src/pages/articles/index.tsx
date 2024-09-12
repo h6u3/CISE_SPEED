@@ -1,5 +1,7 @@
 import { GetStaticProps, NextPage } from "next";
+import { useState, useEffect } from "react";
 import SortableTable from "../../components/table/SortableTable";
+import Cookies from "js-cookie";
 import data from "../../utils/dummydata";
 
 interface ArticlesInterface {
@@ -27,6 +29,34 @@ const Articles: NextPage<ArticlesProps> = ({ articles }) => {
     { key: "claim", label: "Claim" },
     { key: "evidence", label: "Evidence" },
   ];
+
+   // Search state and saved searches state
+   const [searchQuery, setSearchQuery] = useState('');
+   const [savedQueries, setSavedQueries] = useState([]);
+    // Load saved search queries from cookies on page load
+  useEffect(() => {
+    const allCookies = Cookies.get();
+    const savedSearches = Object.keys(allCookies).map((key) => ({
+      queryName: key,
+      queryData: allCookies[key],
+    }));
+    setSavedQueries(savedSearches);
+  }, []);
+
+  // Save the current search query to cookies
+  const saveSearchQuery = () => {
+    const queryName = prompt("Enter a name for your saved search:");
+    if (queryName) {
+      Cookies.set(queryName, searchQuery, { expires: 7 }); // Save search query in cookies for 7 days
+      setSavedQueries([...savedQueries, { queryName, queryData: searchQuery }]);
+    }
+  };
+
+  // Reapply a saved search query
+  const reapplySearchQuery = (queryData) => {
+    setSearchQuery(queryData);
+    handleSearch();
+  };
 
   return (
     <div className="container">
