@@ -19,6 +19,11 @@ type ArticlesProps = {
   articles: ArticlesInterface[];
 };
 
+interface SavedQuery {
+  queryName: string;
+  queryData: string; // Assuming the search query is a string
+}
+
 const Articles: NextPage<ArticlesProps> = ({ articles }) => {
   const headers: { key: keyof ArticlesInterface; label: string }[] = [
     { key: "title", label: "Title" },
@@ -30,10 +35,12 @@ const Articles: NextPage<ArticlesProps> = ({ articles }) => {
     { key: "evidence", label: "Evidence" },
   ];
 
-   // Search state and saved searches state
-   const [searchQuery, setSearchQuery] = useState('');
-   const [savedQueries, setSavedQueries] = useState([]);
-    // Load saved search queries from cookies on page load
+  // Search state and saved search state
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
+  const [filteredArticles, setFilteredArticles] = useState<ArticlesInterface[]>(articles);
+
+  // Load saved search queries from cookies when the page loads
   useEffect(() => {
     const allCookies = Cookies.get();
     const savedSearches = Object.keys(allCookies).map((key) => ({
@@ -42,6 +49,23 @@ const Articles: NextPage<ArticlesProps> = ({ articles }) => {
     }));
     setSavedQueries(savedSearches);
   }, []);
+
+  // Filter the articles based on the search query
+  const handleSearch = () => {
+    if (searchQuery.trim() === "") {
+      setFilteredArticles(articles); // Reset to full list if search query is empty
+    } else {
+      const filtered = articles.filter(
+        (article) =>
+          article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          article.authors.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          article.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          article.claim.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          article.evidence.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredArticles(filtered);
+    }
+  };
 
   // Save the current search query to cookies
   const saveSearchQuery = () => {
@@ -53,16 +77,45 @@ const Articles: NextPage<ArticlesProps> = ({ articles }) => {
   };
 
   // Reapply a saved search query
-  const reapplySearchQuery = (queryData) => {
+  const reapplySearchQuery = (queryData: string) => {
     setSearchQuery(queryData);
-    handleSearch();
+    setTimeout(() => handleSearch(), 0); // Apply the saved search immediately
   };
 
   return (
     <div className="container">
       <h1>Articles Index Page</h1>
       <p>Page containing a table of articles:</p>
-      <SortableTable headers={headers} data={articles} />
+
+      {/* Search Input */}
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Enter search query"
+      />
+      <button onClick={handleSearch}>Search</button>
+      <button onClick={saveSearchQuery}>Save Search</button>
+
+      {/* List of Saved Search Queries */}
+      {savedQueries.length > 0 && (
+        <div>
+          <h3>Saved Searches</h3>
+          <ul>
+            {savedQueries.map((query) => (
+              <li key={query.queryName}>
+                {query.queryName}
+                <button onClick={() => reapplySearchQuery(query.queryData)}>
+                  Reapply
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Table with filtered data */}
+      <SortableTable headers={headers} data={filteredArticles} />
     </div>
   );
 };
@@ -79,7 +132,6 @@ export const getStaticProps: GetStaticProps<ArticlesProps> = async (_) => {
     claim: article.claim,
     evidence: article.evidence,
   }));
-
 
   return {
     props: {
