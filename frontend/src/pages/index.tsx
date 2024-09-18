@@ -45,6 +45,10 @@ const Home = () => {
 
   // State for search and saved queries
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [claim, setClaim] = useState<string>("");
+  const [evidence, setEvidence] = useState<string>("");
   const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<ArticlesInterface[]>(articles);
 
@@ -58,12 +62,12 @@ const Home = () => {
     setSavedQueries(savedSearches);
   }, []);
 
-  // Filter the articles based on the search query
-  const handleSearch = (query: string) => {
-    if (query.trim() === "") {
-      setFilteredArticles(articles); // Reset to full list if search query is empty
-    } else {
-      const filtered = articles.filter(
+  // Filter the articles based on multiple search criteria
+  const handleSearch = (query: string, startDate: string, endDate: string, claim: string, evidence: string) => {
+    let filtered = articles;
+
+    if (query.trim() !== "") {
+      filtered = filtered.filter(
         (article) =>
           article.title.toLowerCase().includes(query.toLowerCase()) ||
           article.authors.toLowerCase().includes(query.toLowerCase()) ||
@@ -71,9 +75,30 @@ const Home = () => {
           article.claim.toLowerCase().includes(query.toLowerCase()) ||
           article.evidence.toLowerCase().includes(query.toLowerCase())
       );
-      setFilteredArticles(filtered);
     }
-    setSearchQuery(query); // Update the search query state
+
+    if (startDate) {
+      filtered = filtered.filter((article) => parseInt(article.pubyear) >= parseInt(startDate));
+    }
+
+    if (endDate) {
+      filtered = filtered.filter((article) => parseInt(article.pubyear) <= parseInt(endDate));
+    }
+
+    if (claim) {
+      filtered = filtered.filter((article) => article.claim.toLowerCase().includes(claim.toLowerCase()));
+    }
+
+    if (evidence) {
+      filtered = filtered.filter((article) => article.evidence.toLowerCase().includes(evidence.toLowerCase()));
+    }
+
+    setFilteredArticles(filtered);
+    setSearchQuery(query);
+    setStartDate(startDate);
+    setEndDate(endDate);
+    setClaim(claim);
+    setEvidence(evidence);
   };
 
   // Save the current search query to cookies
@@ -88,30 +113,33 @@ const Home = () => {
   // Reapply a saved search query
   const reapplySearchQuery = (queryData: string) => {
     setSearchQuery(queryData);
-    setTimeout(() => handleSearch(queryData), 0); // Apply the saved search immediately
+    setTimeout(() => handleSearch(queryData, startDate, endDate, claim, evidence), 0); // Apply the saved search immediately
   };
 
   return (
     <div className="container">
-      {/* Header with logo */}
       <header>
-        <h1>SPEED</h1> {/* Logo or App name */}
+        <h1>SPEED</h1>
       </header>
 
       <main>
-        {/* Welcome or introduction text */}
         <section className="hero">
           <p>Welcome to SPEED, your software practice empirical evidence database.</p>
         </section>
 
-        {/* Search Section */}
         <section className="search-section">
           <h2>Search Articles</h2>
-          {/* Using the SearchBar component */}
-          <SearchBar searchQuery={searchQuery} onSearch={handleSearch} onSave={saveSearchQuery} />
+          <SearchBar
+            onSearch={handleSearch}
+            onSave={saveSearchQuery}
+            searchQuery={searchQuery}
+            startDate={startDate}
+            endDate={endDate}
+            claim={claim}
+            evidence={evidence}
+          />
         </section>
 
-        {/* Saved searches */}
         {savedQueries.length > 0 && (
           <div>
             <h3>Saved Searches</h3>
@@ -128,14 +156,12 @@ const Home = () => {
           </div>
         )}
 
-        {/* Table of articles */}
         <section className="article-section">
           <h2>View Articles</h2>
           <SortableTable headers={headers} data={filteredArticles} />
         </section>
       </main>
 
-      {/* Footer */}
       <footer>
         <p>© 2024 SPEED Project - All Rights Reserved</p>
       </footer>
