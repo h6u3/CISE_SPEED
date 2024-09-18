@@ -59,4 +59,32 @@
   .end {
     margin-left: auto;
   }
-  
+  .search-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 50vh; /* This will center it vertically */
+}
+
+.search-input {
+    width: 60%; /* Makes the search bar wide */
+    padding: 15px;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    margin-right: 10px; /* Spacing between search bar and button */
+}
+
+.search-button {
+    padding: 15px;
+    font-size: 1.2rem;
+    background-color: #004aad; /* Blue color for the button */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.search-button:hover {
+    background-color: #003a7a; /* Darker blue on hover */
+}
