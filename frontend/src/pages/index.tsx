@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { GetStaticProps, NextPage } from "next";
 import SortableTable from "../components/table/SortableTable";
 import SearchBar from "../components/nav/SearchBar";
 import Cookies from "js-cookie";
@@ -6,7 +7,7 @@ import data from "../utils/dummydata";
 
 // Define interface for the articles
 interface ArticlesInterface {
-  id: string;
+  // id: string;
   title: string;
   authors: string;
   source: string;
@@ -15,6 +16,10 @@ interface ArticlesInterface {
   claim: string;
   evidence: string;
 }
+
+type ArticlesProps = {
+  articles: ArticlesInterface[];
+};
 
 interface SavedQuery {
   queryName: string;
@@ -168,5 +173,29 @@ const Home = () => {
     </div>
   );
 };
+
+export const getStaticProps: GetStaticProps<ArticlesProps> = async () => {
+  const response = await fetch('http://localhost:8082/articles');
+  const articles: ArticlesInterface[] = await response.json();  // Add ArticlesInterface[] type
+
+
+  return {
+    props: {
+      articles: articles.map((article: ArticlesInterface) => ({
+        //id: article.id.toString(),
+        title: article.title,
+        authors: article.authors,
+        source: article.source,
+        pubyear: article.pubyear,
+        doi: article.doi,
+        claim: article.claim,
+        evidence: article.evidence,
+      })),
+    },
+  };
+};
+
+
+
 
 export default Home;
