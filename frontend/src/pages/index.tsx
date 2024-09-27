@@ -1,13 +1,9 @@
 import { useState, useEffect } from "react";
-import { GetStaticProps, NextPage } from "next";
 import SortableTable from "../components/table/SortableTable";
 import SearchBar from "../components/nav/SearchBar";
 import Cookies from "js-cookie";
-import data from "../utils/dummydata";
 
-// Define interface for the articles
 interface ArticlesInterface {
-  // id: string;
   title: string;
   authors: string;
   source: string;
@@ -17,13 +13,9 @@ interface ArticlesInterface {
   evidence: string;
 }
 
-type ArticlesProps = {
-  articles: ArticlesInterface[];
-};
-
 interface SavedQuery {
   queryName: string;
-  queryData: string; // Assuming the search query is a string
+  queryData: string;
 }
 
 const Home = () => {
@@ -37,27 +29,18 @@ const Home = () => {
     { key: "evidence", label: "Evidence" },
   ];
 
-  const articles: ArticlesInterface[] = data.map((article) => ({
-    id: article.id ?? article._id,
-    title: article.title,
-    authors: article.authors,
-    source: article.source,
-    pubyear: article.pubyear,
-    doi: article.doi,
-    claim: article.claim,
-    evidence: article.evidence,
-  }));
-
-  // State for search and saved queries
+  // State for articles, search, saved queries, loading, and error handling
+  const [articles, setArticles] = useState<ArticlesInterface[]>([]);
+  const [filteredArticles, setFilteredArticles] = useState<ArticlesInterface[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [claim, setClaim] = useState<string>("");
   const [evidence, setEvidence] = useState<string>("");
   const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
-  const [filteredArticles, setFilteredArticles] = useState<ArticlesInterface[]>(articles);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load saved search queries from cookies when the page loads
   useEffect(() => {
     const allCookies = Cookies.get();
     const savedSearches = Object.keys(allCookies).map((key) => ({
@@ -65,20 +48,38 @@ const Home = () => {
       queryData: allCookies[key],
     }));
     setSavedQueries(savedSearches);
+
+    // Fetch articles on mount
+    const fetchArticles = async () => {
+      try {
+        const response = await fetch("http://localhost:8082/articles");
+        if (!response.ok) {
+          throw new Error("Failed to fetch articles");
+        }
+        const data: ArticlesInterface[] = await response.json();
+        setArticles(data);
+        setFilteredArticles(data);  // Set the initial state of filtered articles
+      } catch (error) {
+        console.log(error)
+        setError("Error fetching articles. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticles();
   }, []);
 
-  // Filter the articles based on multiple search criteria
   const handleSearch = (query: string, startDate: string, endDate: string, claim: string, evidence: string) => {
     let filtered = articles;
 
     if (query.trim() !== "") {
-      filtered = filtered.filter(
-        (article) =>
-          article.title.toLowerCase().includes(query.toLowerCase()) ||
-          article.authors.toLowerCase().includes(query.toLowerCase()) ||
-          article.source.toLowerCase().includes(query.toLowerCase()) ||
-          article.claim.toLowerCase().includes(query.toLowerCase()) ||
-          article.evidence.toLowerCase().includes(query.toLowerCase())
+      filtered = filtered.filter((article) =>
+        article.title?.toLowerCase().includes(query.toLowerCase()) ||
+        article.authors?.toLowerCase().includes(query.toLowerCase()) ||
+        article.source?.toLowerCase().includes(query.toLowerCase()) ||
+        article.claim?.toLowerCase().includes(query.toLowerCase()) ||
+        article.evidence?.toLowerCase().includes(query.toLowerCase())
       );
     }
 
@@ -91,11 +92,11 @@ const Home = () => {
     }
 
     if (claim) {
-      filtered = filtered.filter((article) => article.claim.toLowerCase().includes(claim.toLowerCase()));
+      filtered = filtered.filter((article) => article.claim?.toLowerCase().includes(claim.toLowerCase()));
     }
 
     if (evidence) {
-      filtered = filtered.filter((article) => article.evidence.toLowerCase().includes(evidence.toLowerCase()));
+      filtered = filtered.filter((article) => article.evidence?.toLowerCase().includes(evidence.toLowerCase()));
     }
 
     setFilteredArticles(filtered);
@@ -106,20 +107,26 @@ const Home = () => {
     setEvidence(evidence);
   };
 
-  // Save the current search query to cookies
   const saveSearchQuery = (query: string) => {
     const queryName = prompt("Enter a name for your saved search:");
     if (queryName) {
-      Cookies.set(queryName, query, { expires: 7 }); // Save search query in cookies for 7 days
+      Cookies.set(queryName, query, { expires: 7 });
       setSavedQueries([...savedQueries, { queryName, queryData: query }]);
     }
   };
 
-  // Reapply a saved search query
   const reapplySearchQuery = (queryData: string) => {
     setSearchQuery(queryData);
-    setTimeout(() => handleSearch(queryData, startDate, endDate, claim, evidence), 0); // Apply the saved search immediately
+    setTimeout(() => handleSearch(queryData, startDate, endDate, claim, evidence), 0);
   };
+
+  if (loading) {
+    return <div>Loading articles...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
 
   return (
     <div className="container">
@@ -152,9 +159,7 @@ const Home = () => {
               {savedQueries.map((query) => (
                 <li key={query.queryName}>
                   {query.queryName}
-                  <button onClick={() => reapplySearchQuery(query.queryData)}>
-                    Reapply
-                  </button>
+                  <button onClick={() => reapplySearchQuery(query.queryData)}>Reapply</button>
                 </li>
               ))}
             </ul>
@@ -173,29 +178,5 @@ const Home = () => {
     </div>
   );
 };
-
-export const getStaticProps: GetStaticProps<ArticlesProps> = async () => {
-  const response = await fetch('http://localhost:8082/articles');
-  const articles: ArticlesInterface[] = await response.json();  // Add ArticlesInterface[] type
-
-
-  return {
-    props: {
-      articles: articles.map((article: ArticlesInterface) => ({
-        //id: article.id.toString(),
-        title: article.title,
-        authors: article.authors,
-        source: article.source,
-        pubyear: article.pubyear,
-        doi: article.doi,
-        claim: article.claim,
-        evidence: article.evidence,
-      })),
-    },
-  };
-};
-
-
-
 
 export default Home;
