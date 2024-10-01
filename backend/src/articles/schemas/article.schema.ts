@@ -28,3 +28,4 @@ export class Article {
 }
 
 export const ArticleSchema = SchemaFactory.createForClass(Article);
+ 

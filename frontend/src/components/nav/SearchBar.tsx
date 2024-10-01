@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./searchbar.module.scss";
 
 interface SearchBarProps {
@@ -17,6 +17,27 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onSave, searchQuery, st
   const [end, setEnd] = useState<string>(endDate);
   const [claimFilter, setClaimFilter] = useState<string>(claim);
   const [evidenceFilter, setEvidenceFilter] = useState<string>(evidence);
+
+  // Sync local state with parent props when they change
+  useEffect(() => {
+    setQuery(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setStart(startDate);
+  }, [startDate]);
+
+  useEffect(() => {
+    setEnd(endDate);
+  }, [endDate]);
+
+  useEffect(() => {
+    setClaimFilter(claim);
+  }, [claim]);
+
+  useEffect(() => {
+    setEvidenceFilter(evidence);
+  }, [evidence]);
 
   const handleSearch = () => {
     onSearch(query, start, end, claimFilter, evidenceFilter);

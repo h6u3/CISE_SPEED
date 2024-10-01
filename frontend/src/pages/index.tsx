@@ -2,11 +2,9 @@ import { useState, useEffect } from "react";
 import SortableTable from "../components/table/SortableTable";
 import SearchBar from "../components/nav/SearchBar";
 import Cookies from "js-cookie";
-import data from "../utils/dummydata";
 
-// Define interface for the articles
+// Define interfaces for articles and saved queries
 interface ArticlesInterface {
-  id: string;
   title: string;
   authors: string;
   source: string;
@@ -18,7 +16,13 @@ interface ArticlesInterface {
 
 interface SavedQuery {
   queryName: string;
-  queryData: string; // Assuming the search query is a string
+  queryData: {
+    query: string;
+    startDate: string;
+    endDate: string;
+    claim: string;
+    evidence: string;
+  };
 }
 
 const Home = () => {
@@ -32,65 +36,102 @@ const Home = () => {
     { key: "evidence", label: "Evidence" },
   ];
 
-  const articles: ArticlesInterface[] = data.map((article) => ({
-    id: article.id ?? article._id,
-    title: article.title,
-    authors: article.authors,
-    source: article.source,
-    pubyear: article.pubyear,
-    doi: article.doi,
-    claim: article.claim,
-    evidence: article.evidence,
-  }));
-
-  // State for search and saved queries
+  // State for articles, search, saved queries, loading, and error handling
+  const [articles, setArticles] = useState<ArticlesInterface[]>([]);
+  const [filteredArticles, setFilteredArticles] = useState<ArticlesInterface[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [claim, setClaim] = useState<string>("");
   const [evidence, setEvidence] = useState<string>("");
   const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
-  const [filteredArticles, setFilteredArticles] = useState<ArticlesInterface[]>(articles);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load saved search queries from cookies when the page loads
+  // Load saved queries from cookies and fetch articles on mount
   useEffect(() => {
     const allCookies = Cookies.get();
-    const savedSearches = Object.keys(allCookies).map((key) => ({
-      queryName: key,
-      queryData: allCookies[key],
-    }));
+    
+    // Parse saved queries from cookies
+    const savedSearches = Object.keys(allCookies)
+      .map((key) => {
+        try {
+          const queryData = allCookies[key] ? JSON.parse(allCookies[key]) : null;
+          return {
+            queryName: key,
+            queryData: queryData,
+          };
+        } catch (error) {
+          console.error(`Failed to parse cookie for ${key}:`, error);
+          return null;
+        }
+      })
+      .filter((item) => item !== null); // Filter out null values in case of errors
+
+    console.log("Loaded saved queries:", savedSearches); // Debugging: log saved queries
     setSavedQueries(savedSearches);
+
+    const fetchArticles = async () => {
+      try {
+        const response = await fetch("http://localhost:8082/articles");
+        if (!response.ok) {
+          throw new Error("Failed to fetch articles");
+        }
+        const data: ArticlesInterface[] = await response.json();
+        setArticles(data);
+        setFilteredArticles(data); // Set initial state of filtered articles
+      } catch (error) {
+        setError("Error fetching articles. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticles();
   }, []);
 
-  // Filter the articles based on multiple search criteria
-  const handleSearch = (query: string, startDate: string, endDate: string, claim: string, evidence: string) => {
+  // Handle the search logic
+  const handleSearch = (
+    query: string,
+    startDate: string,
+    endDate: string,
+    claim: string,
+    evidence: string
+  ) => {
     let filtered = articles;
 
     if (query.trim() !== "") {
-      filtered = filtered.filter(
-        (article) =>
-          article.title.toLowerCase().includes(query.toLowerCase()) ||
-          article.authors.toLowerCase().includes(query.toLowerCase()) ||
-          article.source.toLowerCase().includes(query.toLowerCase()) ||
-          article.claim.toLowerCase().includes(query.toLowerCase()) ||
-          article.evidence.toLowerCase().includes(query.toLowerCase())
+      filtered = filtered.filter((article) =>
+        article.title?.toLowerCase().includes(query.toLowerCase()) ||
+        article.authors?.toLowerCase().includes(query.toLowerCase()) ||
+        article.source?.toLowerCase().includes(query.toLowerCase()) ||
+        article.claim?.toLowerCase().includes(query.toLowerCase()) ||
+        article.evidence?.toLowerCase().includes(query.toLowerCase())
       );
     }
 
     if (startDate) {
-      filtered = filtered.filter((article) => parseInt(article.pubyear) >= parseInt(startDate));
+      filtered = filtered.filter(
+        (article) => parseInt(article.pubyear) >= parseInt(startDate)
+      );
     }
 
     if (endDate) {
-      filtered = filtered.filter((article) => parseInt(article.pubyear) <= parseInt(endDate));
+      filtered = filtered.filter(
+        (article) => parseInt(article.pubyear) <= parseInt(endDate)
+      );
     }
 
     if (claim) {
-      filtered = filtered.filter((article) => article.claim.toLowerCase().includes(claim.toLowerCase()));
+      filtered = filtered.filter((article) =>
+        article.claim?.toLowerCase().includes(claim.toLowerCase())
+      );
     }
 
     if (evidence) {
-      filtered = filtered.filter((article) => article.evidence.toLowerCase().includes(evidence.toLowerCase()));
+      filtered = filtered.filter((article) =>
+        article.evidence?.toLowerCase().includes(evidence.toLowerCase())
+      );
     }
 
     setFilteredArticles(filtered);
@@ -102,19 +143,59 @@ const Home = () => {
   };
 
   // Save the current search query to cookies
-  const saveSearchQuery = (query: string) => {
+  const saveSearchQuery = () => {
     const queryName = prompt("Enter a name for your saved search:");
     if (queryName) {
-      Cookies.set(queryName, query, { expires: 7 }); // Save search query in cookies for 7 days
-      setSavedQueries([...savedQueries, { queryName, queryData: query }]);
+      const queryData = {
+        query: searchQuery,
+        startDate,
+        endDate,
+        claim,
+        evidence,
+      };
+      Cookies.set(queryName, JSON.stringify(queryData), { expires: 7 }); // Set cookie to expire in 7 days
+      setSavedQueries([...savedQueries, { queryName, queryData }]); // Update state with new saved query
     }
   };
 
   // Reapply a saved search query
-  const reapplySearchQuery = (queryData: string) => {
-    setSearchQuery(queryData);
-    setTimeout(() => handleSearch(queryData, startDate, endDate, claim, evidence), 0); // Apply the saved search immediately
+  const reapplySearchQuery = (queryData: SavedQuery["queryData"]) => {
+    // Check if queryData exists and is valid
+    if (!queryData) {
+      console.error("Invalid or null query data.");
+      alert("The saved search data is corrupted or unavailable.");
+      return; // Exit early if queryData is invalid
+    }
+  
+    // Log for debugging (optional)
+    console.log("Reapplying query:", queryData);
+  
+    // Safely reapply the search query and fields (empty string fallback)
+    setSearchQuery(queryData.query || "");
+    setStartDate(queryData.startDate || "");
+    setEndDate(queryData.endDate || "");
+    setClaim(queryData.claim || "");
+    setEvidence(queryData.evidence || "");
+  
+    // Trigger search, even if it's invalid data (which will result in no results)
+    handleSearch(
+      queryData.query || "",
+      queryData.startDate || "",
+      queryData.endDate || "",
+      queryData.claim || "",
+      queryData.evidence || ""
+    );
   };
+  
+
+
+  if (loading) {
+    return <div>Loading articles...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
 
   return (
     <div className="container">
@@ -147,9 +228,7 @@ const Home = () => {
               {savedQueries.map((query) => (
                 <li key={query.queryName}>
                   {query.queryName}
-                  <button onClick={() => reapplySearchQuery(query.queryData)}>
-                    Reapply
-                  </button>
+                  <button onClick={() => reapplySearchQuery(query.queryData)}>Reapply</button>
                 </li>
               ))}
             </ul>
