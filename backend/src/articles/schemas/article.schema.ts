@@ -9,13 +9,13 @@ export class Article {
   title: string;
 
   @Prop()
-  authors: string;
+  authors: string[];
 
   @Prop()
   source: string;
 
   @Prop()
-  pubyear: string;
+  pubyear: number;
 
   @Prop()
   doi: string;

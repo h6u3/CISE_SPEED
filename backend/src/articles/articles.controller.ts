@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ArticlesService } from './articles.service';
 import { Article } from './schemas/article.schema';
 
@@ -9,5 +9,10 @@ export class ArticlesController {
   @Get()
   getAllArticles(): Promise<Article[]> {
     return this.articlesService.getAllArticles();
+  }
+
+  @Post()
+  async create(@Body() createArticleDto: any) {
+    return this.articlesService.create(createArticleDto);
   }
 }
