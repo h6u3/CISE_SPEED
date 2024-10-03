@@ -1,0 +1,39 @@
+.search-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh; /* Vertically centered */
+}
+
+.search-input {
+  width: 60%;
+  padding: 15px;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  margin-right: 10px;
+}
+
+.button-group {
+  display: flex;
+}
+
+.search-button,
+.save-button {
+  padding: 15px;
+  font-size: 1.2rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: background-color 0.3s ease; /* Smooth hover effect */
+}
+
+.search-button {
+  background-color: #004aad; /* Primary Blue */
+  color: white;
+}
+
+.search-button:hover {
+  background-color: #003a7a; /* Darker blue on hover */
+}
