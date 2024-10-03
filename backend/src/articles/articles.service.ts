@@ -10,4 +10,9 @@ export class ArticlesService {
   async getAllArticles(): Promise<Article[]> {
     return this.articleModel.find().exec();
   }
+
+  async create(createArticleDto: any): Promise<Article> {
+    const createdArticle = new this.articleModel(createArticleDto);
+    return createdArticle.save();
+  }
 }

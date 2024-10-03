@@ -12,19 +12,37 @@ const NewDiscussion = () => {
 
   const submitNewArticle = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    console.log(
-      JSON.stringify({
-        title,
-        authors,
-        source,
-        publication_year: pubYear,
-        doi,
-        summary,
-        linked_discussion: linkedDiscussion,
-      })
-    );
+  
+    const articleData = {
+      title,
+      authors,
+      source,
+      pubYear,
+      doi,
+      claim: summary, // assuming 'summary' is intended to be 'claim'
+      evidence: linkedDiscussion, // assuming 'linkedDiscussion' is intended to be 'evidence'
+    };
+  
+    try {
+      const response = await fetch('http://localhost:8082/articles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(articleData),
+      });
+  
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Article submitted successfully:', data);
+      } else {
+        console.error('Failed to submit article');
+      }
+    } catch (error) {
+      console.error('Error submitting article:', error);
+    }
   };
+  
 
   // Some helper methods for the authors array
 
