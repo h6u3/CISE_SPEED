@@ -50,27 +50,6 @@ const Home = () => {
 
   // Load saved queries from cookies and fetch articles on mount
   useEffect(() => {
-    const allCookies = Cookies.get();
-    
-    // Parse saved queries from cookies
-    const savedSearches = Object.keys(allCookies)
-      .map((key) => {
-        try {
-          const queryData = allCookies[key] ? JSON.parse(allCookies[key]) : null;
-          return {
-            queryName: key,
-            queryData: queryData,
-          };
-        } catch (error) {
-          console.error(`Failed to parse cookie for ${key}:`, error);
-          return null;
-        }
-      })
-      .filter((item) => item !== null); // Filter out null values in case of errors
-
-    console.log("Loaded saved queries:", savedSearches); // Debugging: log saved queries
-    setSavedQueries(savedSearches);
-
     const fetchArticles = async () => {
       try {
         const response = await fetch("http://localhost:8082/articles");
@@ -78,17 +57,33 @@ const Home = () => {
           throw new Error("Failed to fetch articles");
         }
         const data: ArticlesInterface[] = await response.json();
-        setArticles(data);
-        setFilteredArticles(data); // Set initial state of filtered articles
+  
+        // Sanitize data to replace undefined fields with null or empty string
+        const sanitizedData = data.map((article) => ({
+          ...article,
+          title: article.title || "Untitled",  // Ensure title is never undefined
+          authors: article.authors || "Unknown",
+          source: article.source || "Unknown",
+          pubyear: article.pubyear || "N/A",
+          doi: article.doi || "N/A",
+          claim: article.claim || "N/A",
+          evidence: article.evidence || "N/A",
+        }));
+  
+        setArticles(sanitizedData);
+        setFilteredArticles(sanitizedData); // Set initial state of filtered articles
       } catch (error) {
         setError("Error fetching articles. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
-
+  
     fetchArticles();
   }, []);
+  
+  
+  
 
   // Handle the search logic
   const handleSearch = (
