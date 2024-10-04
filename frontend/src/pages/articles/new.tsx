@@ -12,10 +12,12 @@ const NewDiscussion = () => {
 
   const submitNewArticle = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-  
+    
+    const concatenatedAuthors = authors.join(", ");
+
     const articleData = {
       title,
-      authors,
+      authors: concatenatedAuthors,
       source,
       pubYear,
       doi,
@@ -110,7 +112,7 @@ const NewDiscussion = () => {
         >
           +
         </button>
-
+{/*
         <label htmlFor="source">Source:</label>
         <input
           className={formStyles.formItem}
@@ -122,7 +124,7 @@ const NewDiscussion = () => {
             setSource(event.target.value);
           }}
         />
-
+*/}
         <label htmlFor="pubYear">Publication Year:</label>
         <input
           className={formStyles.formItem}
