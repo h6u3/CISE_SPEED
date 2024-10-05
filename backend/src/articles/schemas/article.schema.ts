@@ -9,7 +9,7 @@ export class Article {
   title: string;
 
   @Prop()
-  authors: string[];
+  authors: string;
 
   @Prop()
   source: string;
