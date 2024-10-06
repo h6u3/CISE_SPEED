@@ -25,6 +25,12 @@ export class Article {
 
   @Prop()
   evidence: string;
+
+  @Prop({ default: 'pending' })  // default status is pending
+  status: string;
+
+  @Prop()
+  rejectionReason: string;  // if rejected, store reason
 }
 
 export const ArticleSchema = SchemaFactory.createForClass(Article);
