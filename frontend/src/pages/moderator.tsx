@@ -15,11 +15,10 @@ const ModeratorPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null); // Track action status
 
-  // Fetch pending articles for moderation
   const fetchPendingArticles = async () => {
     try {
-      const response = await axios.get('http://localhost:8082/articles');
-      setPendingArticles(response.data);
+      const response = await axios.get('http://localhost:8082/articles/moderation');
+      setPendingArticles(response.data);  // Set only pending articles
       setError(null);
     } catch (error: any) {
       console.error("Error fetching pending articles:", error);
@@ -29,40 +28,67 @@ const ModeratorPage = () => {
     }
   };
 
-  // Approve an article
-  const handleApprove = async (id: string) => {
-    const confirmApproval = window.confirm("Are you sure you want to approve this article?");
-    if (!confirmApproval) return;
-
-    setActionInProgress(id); // Set the ID of the article being processed
+  const createArticle = async (articleData: any) => {
     try {
-      await axios.post(`http://localhost:8082/api/articles/${id}/approve`);
-      fetchPendingArticles(); // Refresh the list after approval
+      const response = await axios.post('http://localhost:8082/articles', articleData);
+      
+      if (response.data.status === 'rejected') {
+        alert('Duplicate article detected and rejected.');
+      } else {
+        alert('Article submitted successfully.');
+      }
+
+      fetchPendingArticles(); // Refresh the pending articles list after article submission
     } catch (error: any) {
-      console.error("Error approving article:", error);
-      alert("Failed to approve the article. Please try again.");
-    } finally {
-      setActionInProgress(null); // Clear action progress
+      console.error('Error submitting article:', error);
+      alert('Failed to submit article.');
     }
   };
 
-  // Reject an article
+  const handleApprove = async (id: string) => {
+    const confirmApproval = window.confirm("Are you sure you want to approve this article?");
+    if (!confirmApproval) return;
+  
+    setActionInProgress(id);
+    try {
+      const response = await axios.post(`http://localhost:8082/articles/${id}/approve`);
+      
+      if (response.data.status === 'rejected') {
+        alert('Article was rejected due to duplication.');  // Notify moderator about rejection
+      } else {
+        alert(response.data.message);  // Display success message
+      }
+  
+      fetchPendingArticles();  // Refresh the pending list after action
+    } catch (error: any) {
+      console.error("Error approving article:", error.response || error);
+      alert("Failed to approve the article. Please try again.");
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+  
   const handleReject = async (id: string) => {
     const reason = prompt("Enter the reason for rejection:");
-    if (!reason) return; // Exit if no reason is provided
+    if (!reason) return;
 
     const confirmRejection = window.confirm(`Are you sure you want to reject this article? Reason: ${reason}`);
     if (!confirmRejection) return;
 
-    setActionInProgress(id); // Set the ID of the article being processed
+    setActionInProgress(id);
     try {
-      await axios.post(`http://localhost:8082/api/articles/${id}/reject`, { reason });
-      fetchPendingArticles(); // Refresh the list after rejection
+      const response = await axios.post(`http://localhost:8082/articles/${id}/reject`, { reason });
+      if (response.data.success) {
+        alert(response.data.message);
+        fetchPendingArticles(); // Refresh the list
+      } else {
+        alert("Failed to reject the article.");
+      }
     } catch (error: any) {
-      console.error("Error rejecting article:", error);
+      console.error("Error rejecting article:", error.response || error);
       alert("Failed to reject the article. Please try again.");
     } finally {
-      setActionInProgress(null); // Clear action progress
+      setActionInProgress(null);
     }
   };
 
@@ -90,13 +116,13 @@ const ModeratorPage = () => {
               <p>Status: {article.status}</p>
               <button
                 onClick={() => handleApprove(article._id)}
-                disabled={actionInProgress === article._id} // Disable button if action is in progress
+                disabled={actionInProgress === article._id}
               >
                 {actionInProgress === article._id ? 'Approving...' : 'Approve'}
               </button>
               <button
                 onClick={() => handleReject(article._id)}
-                disabled={actionInProgress === article._id} // Disable button if action is in progress
+                disabled={actionInProgress === article._id}
               >
                 {actionInProgress === article._id ? 'Rejecting...' : 'Reject'}
               </button>

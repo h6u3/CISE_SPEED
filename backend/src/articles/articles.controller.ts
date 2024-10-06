@@ -18,25 +18,36 @@ export class ArticlesController {
     return this.articlesService.create(createArticleDto);
   }
 
+
   // Fetch articles pending for moderation
   @Get('moderation')
   async getPendingArticles(): Promise<Article[]> {
-    console.log('Fetching articles pending moderation...');  // Debug log
+    console.log('Fetching articles pending moderation...');
     return this.articlesService.getPendingArticles();  // Fetch articles with 'pending' status
   }
+  
 
 
-  // Approve an article by changing its status to 'approved'
   @Post(':id/approve')
-  async approveArticle(@Param('id') id: string): Promise<Article> {
-    return this.articlesService.approveArticle(id);
+  async approveArticle(@Param('id') id: string): Promise<{ message: string; success: boolean }> {
+    try {
+      await this.articlesService.approveArticle(id);
+      return { message: `Article with ID ${id} approved.`, success: true }; // Return success response
+    } catch (error) {
+      throw new Error(`Failed to approve article: ${error.message}`);
+    }
   }
-
-  // Reject an article by changing its status to 'rejected' and providing a rejection reason
+  
   @Post(':id/reject')
-  async rejectArticle(@Param('id') id: string, @Body('reason') reason: string): Promise<Article> {
-    return this.articlesService.rejectArticle(id, reason);
+  async rejectArticle(@Param('id') id: string, @Body('reason') reason: string): Promise<{ message: string; success: boolean }> {
+    try {
+      await this.articlesService.rejectArticle(id, reason);
+      return { message: `Article with ID ${id} rejected for reason: ${reason}.`, success: true }; // Return success response
+    } catch (error) {
+      throw new Error(`Failed to reject article: ${error.message}`);
+    }
   }
+  
 
   // Check if an article is a duplicate by comparing title or DOI
   @Post('check-duplicate')

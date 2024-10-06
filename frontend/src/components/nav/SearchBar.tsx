@@ -2,21 +2,19 @@ import React, { useState, useEffect } from "react";
 import styles from "./searchbar.module.scss";
 
 interface SearchBarProps {
-  onSearch: (query: string, startDate: string, endDate: string, claim: string, evidence: string) => void;
+  onSearch: (query: string, startDate: string, endDate: string, claim: string) => void;
   onSave: (query: string) => void;
   searchQuery: string;
   startDate: string;
   endDate: string;
   claim: string;
-  evidence: string;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onSave, searchQuery, startDate, endDate, claim, evidence }) => {
+const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onSave, searchQuery, startDate, endDate, claim }) => {
   const [query, setQuery] = useState<string>(searchQuery);
   const [start, setStart] = useState<string>(startDate);
   const [end, setEnd] = useState<string>(endDate);
   const [claimFilter, setClaimFilter] = useState<string>(claim);
-  const [evidenceFilter, setEvidenceFilter] = useState<string>(evidence);
 
   // Sync local state with parent props when they change
   useEffect(() => {
@@ -35,12 +33,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onSave, searchQuery, st
     setClaimFilter(claim);
   }, [claim]);
 
-  useEffect(() => {
-    setEvidenceFilter(evidence);
-  }, [evidence]);
-
-  const handleSearch = () => {
-    onSearch(query, start, end, claimFilter, evidenceFilter);
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Prevent page refresh
+    onSearch(query, start, end, claimFilter);
   };
 
   const handleSave = () => {
@@ -48,7 +43,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onSave, searchQuery, st
   };
 
   return (
-    <div className={styles["search-container"]}>
+    <form className={styles["search-container"]} onSubmit={handleSearch}>
       <input
         type="text"
         className={styles["search-input"]}
@@ -77,22 +72,15 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onSave, searchQuery, st
         value={claimFilter}
         onChange={(e) => setClaimFilter(e.target.value)}
       />
-      <input
-        type="text"
-        className={styles["evidence-input"]}
-        placeholder="Evidence"
-        value={evidenceFilter}
-        onChange={(e) => setEvidenceFilter(e.target.value)}
-      />
       <div className={styles["button-group"]}>
-        <button className={styles["search-button"]} onClick={handleSearch}>
+        <button type="submit" className={styles["search-button"]}>
           Search
         </button>
-        <button className={styles["save-button"]} onClick={handleSave}>
+        <button type="button" className={styles["save-button"]} onClick={handleSave}>
           Save Search
         </button>
       </div>
-    </div>
+    </form>
   );
 };
 
