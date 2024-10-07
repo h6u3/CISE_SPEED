@@ -3,7 +3,7 @@ import styles from "./searchbar.module.scss";
 
 interface SearchBarProps {
   onSearch: (query: string, startDate: string, endDate: string, claim: string) => void;
-  onSave: (query: string) => void;
+  onSave: () => void;
   searchQuery: string;
   startDate: string;
   endDate: string;
@@ -39,7 +39,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onSave, searchQuery, st
   };
 
   const handleSave = () => {
-    onSave(query);
+    onSave();  // Save the current search
   };
 
   return (

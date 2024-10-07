@@ -44,18 +44,19 @@ const Home = () => {
   // Load saved queries from cookies on component mount
   useEffect(() => {
     const savedQueryKeys = Object.keys(Cookies.get());
-    const loadedSavedQueries = savedQueryKeys.map((key) => ({
+    const uniqueQueries = new Set(savedQueryKeys); // Ensure unique saved searches
+    const loadedSavedQueries = Array.from(uniqueQueries).map((key) => ({
       queryName: key,
       queryData: JSON.parse(Cookies.get(key) || '{}'),
     }));
     setSavedQueries(loadedSavedQueries);
   }, []);
 
-  // Fetch articles on mount
+  // Fetch verified articles on mount
   useEffect(() => {
     const fetchArticles = async () => {
       try {
-        const response = await fetch("http://localhost:8082/articles");
+        const response = await fetch("http://localhost:8082/articles");  // Assuming this only returns verified articles
         if (!response.ok) {
           throw new Error("Failed to fetch articles");
         }
@@ -71,7 +72,7 @@ const Home = () => {
         }));
   
         setArticles(sanitizedData);
-        setFilteredArticles(sanitizedData);
+        setFilteredArticles(sanitizedData);  // Initialize filtered articles to show all
       } catch (error) {
         setError("Error fetching articles. Please try again later.");
       } finally {
@@ -118,10 +119,6 @@ const Home = () => {
     }
 
     setFilteredArticles(filtered);
-    setSearchQuery(query);
-    setStartDate(startDate);
-    setEndDate(endDate);
-    setClaim(claim);
   };
 
   // Save search query to cookies
@@ -134,24 +131,9 @@ const Home = () => {
         endDate,
         claim,
       };
-      Cookies.set(queryName, JSON.stringify(queryData), { expires: 7 });
+      Cookies.set(queryName, JSON.stringify(queryData), { expires: 30 });  // Set expiration to 30 days
       setSavedQueries([...savedQueries, { queryName, queryData }]);
     }
-  };
-
-  // Reapply a saved search query
-  const reapplySearchQuery = (queryData: SavedQuery["queryData"]) => {
-    setSearchQuery(queryData.query || "");
-    setStartDate(queryData.startDate || "");
-    setEndDate(queryData.endDate || "");
-    setClaim(queryData.claim || "");
-
-    handleSearch(
-      queryData.query || "",
-      queryData.startDate || "",
-      queryData.endDate || "",
-      queryData.claim || ""
-    );
   };
 
   if (loading) {
@@ -192,7 +174,7 @@ const Home = () => {
               {savedQueries.map((query) => (
                 <li key={query.queryName}>
                   {query.queryName}
-                  <button onClick={() => reapplySearchQuery(query.queryData)}>Reapply</button>
+                  {/* Remove the reapply button */}
                 </li>
               ))}
             </ul>

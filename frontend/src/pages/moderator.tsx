@@ -7,18 +7,35 @@ interface Article {
   title: string;
   authors: string;
   status: string;
+  submitterVerified: boolean;
+  moderatorApproved: boolean;
+  analystApproved: boolean;
 }
 
 const ModeratorPage = () => {
-  const [pendingArticles, setPendingArticles] = useState<Article[]>([]);
+  const [verifiedArticles, setVerifiedArticles] = useState<Article[]>([]);
+  const [unverifiedArticles, setUnverifiedArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionInProgress, setActionInProgress] = useState<string | null>(null); // Track action status
 
+  // Fetch articles that require moderator approval
   const fetchPendingArticles = async () => {
     try {
       const response = await axios.get('http://localhost:8082/articles/moderation');
-      setPendingArticles(response.data);  // Set only pending articles
+      const allArticles = response.data;
+  
+      // Unverified articles: Either submitter is not verified or moderator hasn't approved
+      const unverified = allArticles.filter((article: Article) => {
+        return !article.submitterVerified || (article.submitterVerified && !article.moderatorApproved);
+      });
+  
+      // Verified articles: Both submitter and moderator approved
+      const verified = allArticles.filter((article: Article) => {
+        return article.submitterVerified && article.moderatorApproved;  // Both conditions should be true
+      });
+  
+      setUnverifiedArticles(unverified);
+      setVerifiedArticles(verified);
       setError(null);
     } catch (error: any) {
       console.error("Error fetching pending articles:", error);
@@ -27,68 +44,35 @@ const ModeratorPage = () => {
       setLoading(false);
     }
   };
+  
 
-  const createArticle = async (articleData: any) => {
-    try {
-      const response = await axios.post('http://localhost:8082/articles', articleData);
-      
-      if (response.data.status === 'rejected') {
-        alert('Duplicate article detected and rejected.');
-      } else {
-        alert('Article submitted successfully.');
-      }
-
-      fetchPendingArticles(); // Refresh the pending articles list after article submission
-    } catch (error: any) {
-      console.error('Error submitting article:', error);
-      alert('Failed to submit article.');
-    }
-  };
-
+  // Approve an article
   const handleApprove = async (id: string) => {
     const confirmApproval = window.confirm("Are you sure you want to approve this article?");
     if (!confirmApproval) return;
-  
-    setActionInProgress(id);
+
     try {
       const response = await axios.post(`http://localhost:8082/articles/${id}/approve`);
-      
-      if (response.data.status === 'rejected') {
-        alert('Article was rejected due to duplication.');  // Notify moderator about rejection
-      } else {
-        alert(response.data.message);  // Display success message
-      }
-  
+      alert(response.data.message);  // Display success message
       fetchPendingArticles();  // Refresh the pending list after action
     } catch (error: any) {
       console.error("Error approving article:", error.response || error);
       alert("Failed to approve the article. Please try again.");
-    } finally {
-      setActionInProgress(null);
     }
   };
-  
-  const handleReject = async (id: string) => {
-    const reason = prompt("Enter the reason for rejection:");
-    if (!reason) return;
 
+  // Reject an article
+  const handleReject = async (id: string, reason: string) => {
     const confirmRejection = window.confirm(`Are you sure you want to reject this article? Reason: ${reason}`);
     if (!confirmRejection) return;
 
-    setActionInProgress(id);
     try {
       const response = await axios.post(`http://localhost:8082/articles/${id}/reject`, { reason });
-      if (response.data.success) {
-        alert(response.data.message);
-        fetchPendingArticles(); // Refresh the list
-      } else {
-        alert("Failed to reject the article.");
-      }
+      alert(response.data.message);
+      fetchPendingArticles();  // Refresh the list
     } catch (error: any) {
       console.error("Error rejecting article:", error.response || error);
       alert("Failed to reject the article. Please try again.");
-    } finally {
-      setActionInProgress(null);
     }
   };
 
@@ -107,31 +91,45 @@ const ModeratorPage = () => {
   return (
     <div>
       <h1>Articles Pending Moderation</h1>
-      {pendingArticles.length > 0 ? (
-        <ul>
-          {pendingArticles.map(article => (
-            <li key={article._id}>
-              <h2>{article.title}</h2>
-              <p>By: {article.authors}</p>
-              <p>Status: {article.status}</p>
-              <button
-                onClick={() => handleApprove(article._id)}
-                disabled={actionInProgress === article._id}
-              >
-                {actionInProgress === article._id ? 'Approving...' : 'Approve'}
-              </button>
-              <button
-                onClick={() => handleReject(article._id)}
-                disabled={actionInProgress === article._id}
-              >
-                {actionInProgress === article._id ? 'Rejecting...' : 'Reject'}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>No articles pending moderation.</p>
-      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        {/* Left-hand side: Unverified Submitter Articles */}
+        <div style={{ width: '45%' }}>
+          <h2>Unverified or Rejected Articles</h2>
+          {unverifiedArticles.length > 0 ? (
+            <ul>
+              {unverifiedArticles.map(article => (
+                <li key={article._id}>
+                  <h2>{article.title}</h2>
+                  <p>By: {article.authors}</p>
+                  <p>Status: Rejected (Unverified or Not Approved by Moderator)</p>
+                  {/* No buttons needed for unverified articles */}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No unverified articles.</p>
+          )}
+        </div>
+
+        {/* Right-hand side: Verified Submitter Articles */}
+        <div style={{ width: '45%' }}>
+          <h2>Verified and Approved Articles</h2>
+          {verifiedArticles.length > 0 ? (
+            <ul>
+              {verifiedArticles.map(article => (
+                <li key={article._id}>
+                  <h2>{article.title}</h2>
+                  <p>By: {article.authors}</p>
+                  <p>Status: Auto Submitted (Approved by Moderator)</p>
+                  {/* No need for further approval or rejection */}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No verified articles pending moderation.</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

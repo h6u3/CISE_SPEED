@@ -2,56 +2,72 @@ import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ArticlesService } from './articles.service';
 import { Article } from './schemas/article.schema';
 
+/*
+so http://localhost:8082/articles/all is to show all
+http://localhost:8082/articles/rejected is for rejected
+
+
+*/
+
 @Controller('articles')
 export class ArticlesController {
   constructor(private readonly articlesService: ArticlesService) {}
 
-  // Fetch all articles (for general purposes)
+  // fetch fully verified article
   @Get()
-  getAllArticles(): Promise<Article[]> {
-    return this.articlesService.getAllArticles();
+  async getVerifiedArticles(): Promise<Article[]> {
+    return this.articlesService.getVerifiedArticles();
   }
 
-  // Create a new article (default status is 'pending')
+
+// Fetch all articles (general)
+@Get('all')
+async getAllArticles(): Promise<Article[]> {
+  return this.articlesService.getAllArticles();
+}
+
+// New endpoint to fetch all rejected articles
+@Get('rejected')
+async getRejectedArticles(): Promise<Article[]> {
+  return this.articlesService.getRejectedArticles();
+}
+
+
+  // Create a new article
   @Post()
   async create(@Body() createArticleDto: any) {
     return this.articlesService.create(createArticleDto);
   }
 
-
   // Fetch articles pending for moderation
   @Get('moderation')
-  async getPendingArticles(): Promise<Article[]> {
-    console.log('Fetching articles pending moderation...');
-    return this.articlesService.getPendingArticles();  // Fetch articles with 'pending' status
+  getPendingArticles(): Promise<Article[]> {
+    return this.articlesService.getPendingArticles();
+  }
+
+  @Post(':id/verify')
+  verifyArticle(@Param('id') id: string, @Body('verified') verified: boolean): Promise<Article> {
+    return this.articlesService.verifyArticle(id, verified);
   }
   
 
-
+  // Approve an article by a moderator
   @Post(':id/approve')
-  async approveArticle(@Param('id') id: string): Promise<{ message: string; success: boolean }> {
-    try {
-      await this.articlesService.approveArticle(id);
-      return { message: `Article with ID ${id} approved.`, success: true }; // Return success response
-    } catch (error) {
-      throw new Error(`Failed to approve article: ${error.message}`);
-    }
+  approveArticle(@Param('id') id: string): Promise<Article> {
+    return this.articlesService.approveArticle(id);
   }
-  
-  @Post(':id/reject')
-  async rejectArticle(@Param('id') id: string, @Body('reason') reason: string): Promise<{ message: string; success: boolean }> {
-    try {
-      await this.articlesService.rejectArticle(id, reason);
-      return { message: `Article with ID ${id} rejected for reason: ${reason}.`, success: true }; // Return success response
-    } catch (error) {
-      throw new Error(`Failed to reject article: ${error.message}`);
-    }
-  }
-  
 
-  // Check if an article is a duplicate by comparing title or DOI
-  @Post('check-duplicate')
-  async checkDuplicate(@Body('title') title: string, @Body('doi') doi: string): Promise<boolean> {
-    return this.articlesService.checkDuplicateArticle(title, doi);
+
+
+  // Reject an article with a reason
+  @Post(':id/reject')
+  rejectArticle(@Param('id') id: string, @Body('reason') reason: string): Promise<Article> {
+    return this.articlesService.rejectArticle(id, reason);
+  }
+
+  // Analyst approval endpoint
+  @Post(':id/analyst-approve')
+  approveArticleByAnalyst(@Param('id') id: string): Promise<Article> {
+    return this.articlesService.approveArticleByAnalyst(id);
   }
 }
