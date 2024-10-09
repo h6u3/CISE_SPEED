@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import styles from '../components/nav/ModeratorPage.module.scss';
 
 // Define the structure of an article
 interface Article {
@@ -18,28 +19,30 @@ const ModeratorPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch articles that require moderator approval
-  const fetchPendingArticles = async () => {
+  // Fetch all articles and categorize them
+  const fetchArticles = async () => {
     try {
-      const response = await axios.get('http://localhost:8082/articles/moderation');
-      const allArticles = response.data;
+      const response = await axios.get('http://localhost:8082/articles/all');
+      const allArticles: Article[] = response.data;
   
-      // Unverified articles: Either submitter is not verified or moderator hasn't approved
-      const unverified = allArticles.filter((article: Article) => {
-        return !article.submitterVerified || (article.submitterVerified && !article.moderatorApproved);
-      });
+      console.log("Fetched Articles:", allArticles); // Debug to ensure data is fetched
   
-      // Verified articles: Both submitter and moderator approved
-      const verified = allArticles.filter((article: Article) => {
-        return article.submitterVerified && article.moderatorApproved;  // Both conditions should be true
-      });
+      // Unverified Articles: All fields are initially false
+      const unverified = allArticles.filter((article) => 
+        !article.submitterVerified && !article.moderatorApproved && !article.analystApproved
+      );
+  
+      // Verified Articles: submitterVerified and moderatorApproved are true
+      const verified = allArticles.filter((article) => 
+        article.submitterVerified && article.moderatorApproved
+      );
   
       setUnverifiedArticles(unverified);
       setVerifiedArticles(verified);
       setError(null);
     } catch (error: any) {
-      console.error("Error fetching pending articles:", error);
-      setError(`Error fetching pending articles: ${error.message || error}`);
+      console.error("Error fetching articles:", error);
+      setError(`Error fetching articles: ${error.message || error}`);
     } finally {
       setLoading(false);
     }
@@ -48,40 +51,30 @@ const ModeratorPage = () => {
 
   // Approve an article
   const handleApprove = async (id: string) => {
+    console.log("Approving article with ID:", id); // Log the ID to check if it's correct
+  
     const confirmApproval = window.confirm("Are you sure you want to approve this article?");
     if (!confirmApproval) return;
-
+  
     try {
       const response = await axios.post(`http://localhost:8082/articles/${id}/approve`);
-      alert(response.data.message);  // Display success message
-      fetchPendingArticles();  // Refresh the pending list after action
+      console.log('Article approved successfully:', response.data);
+      fetchArticles();  // Refresh the lists after action
     } catch (error: any) {
-      console.error("Error approving article:", error.response || error);
-      alert("Failed to approve the article. Please try again.");
+      console.error("Error approving article:", error.response?.data || error.message);
+      alert(`Failed to approve the article. ${error.response?.data?.message || 'Internal server error.'}`);
     }
   };
-
-  // Reject an article
-  const handleReject = async (id: string, reason: string) => {
-    const confirmRejection = window.confirm(`Are you sure you want to reject this article? Reason: ${reason}`);
-    if (!confirmRejection) return;
-
-    try {
-      const response = await axios.post(`http://localhost:8082/articles/${id}/reject`, { reason });
-      alert(response.data.message);
-      fetchPendingArticles();  // Refresh the list
-    } catch (error: any) {
-      console.error("Error rejecting article:", error.response || error);
-      alert("Failed to reject the article. Please try again.");
-    }
-  };
+  
+  
+  
 
   useEffect(() => {
-    fetchPendingArticles();
+    fetchArticles();
   }, []);
 
   if (loading) {
-    return <p>Loading pending articles...</p>;
+    return <p>Loading articles...</p>;
   }
 
   if (error) {
@@ -89,20 +82,20 @@ const ModeratorPage = () => {
   }
 
   return (
-    <div>
+    <div className={styles.container}>
       <h1>Articles Pending Moderation</h1>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        {/* Left-hand side: Unverified Submitter Articles */}
-        <div style={{ width: '45%' }}>
-          <h2>Unverified or Rejected Articles</h2>
+      <div className={styles.content}>
+        {/* Left: Unverified Articles */}
+        <div className={styles.unverified}>
+          <h2>Unverified Articles</h2>
           {unverifiedArticles.length > 0 ? (
-            <ul>
+            <ul className={styles.articleList}>
               {unverifiedArticles.map(article => (
                 <li key={article._id}>
                   <h2>{article.title}</h2>
                   <p>By: {article.authors}</p>
-                  <p>Status: Rejected (Unverified or Not Approved by Moderator)</p>
-                  {/* No buttons needed for unverified articles */}
+                  <p>Status: Unverified</p>
+                  <button onClick={() => handleApprove(article._id)}>Verify</button>
                 </li>
               ))}
             </ul>
@@ -111,22 +104,21 @@ const ModeratorPage = () => {
           )}
         </div>
 
-        {/* Right-hand side: Verified Submitter Articles */}
-        <div style={{ width: '45%' }}>
+        {/* Right: Verified Articles */}
+        <div className={styles.verified}>
           <h2>Verified and Approved Articles</h2>
           {verifiedArticles.length > 0 ? (
-            <ul>
+            <ul className={styles.articleList}>
               {verifiedArticles.map(article => (
                 <li key={article._id}>
                   <h2>{article.title}</h2>
                   <p>By: {article.authors}</p>
-                  <p>Status: Auto Submitted (Approved by Moderator)</p>
-                  {/* No need for further approval or rejection */}
+                  <p>Status: {article.analystApproved ? 'Fully Approved' : 'Moderator Approved'}</p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p>No verified articles pending moderation.</p>
+            <p>No verified articles available.</p>
           )}
         </div>
       </div>

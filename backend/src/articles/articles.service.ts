@@ -24,7 +24,6 @@ export class ArticlesService {
     return this.articleModel.find().exec(); // Fetch all articles from the database
   }
 
-
   
   // for searcher (only fetch verified)
 async getVerifiedArticles(): Promise<Article[]> {
@@ -63,34 +62,46 @@ async getVerifiedArticles(): Promise<Article[]> {
   
 
   // Update article verification status
-  async verifyArticle(id: string, verified: boolean): Promise<Article> {
+  async verifyArticle(id: string): Promise<Article> {
     const article = await this.articleModel.findByIdAndUpdate(
       id,
-      { verified },
+      { moderatorApproved: true, status: 'approved' },
       { new: true }
     );
-
+  
     if (!article) {
       throw new BadRequestException('Article not found');
     }
-
+  
     return article;
   }
 
   // Approve an article by the moderator
   async approveArticle(id: string): Promise<Article> {
-    const article = await this.articleModel.findByIdAndUpdate(
-      id,
-      { moderatorApproved: true, status: 'approved' },  // Mark as approved by moderator
-      { new: true }  // Return the updated document
-    );
-
-    if (!article) {
-      throw new BadRequestException('Article not found');
+    try {
+      const article = await this.articleModel.findByIdAndUpdate(
+        id,
+        {
+          submitterVerified: true,  // Set to true upon moderation approval
+          moderatorApproved: true,  // Mark as approved by the moderator
+          status: 'approved'
+        },
+        { new: true }
+      );
+  
+      if (!article) {
+        this.logger.error(`Article with ID ${id} not found`);
+        throw new BadRequestException('Article not found');
+      }
+  
+      return article;
+    } catch (error) {
+      this.logger.error(`Failed to approve article with ID ${id}. Error: ${error.message}`, error.stack);
+      throw new BadRequestException(`Failed to approve article: ${error.message}`);
     }
-
-    return article;
   }
+  
+  
 
   // Reject an article
   async rejectArticle(id: string, reason: string): Promise<Article> {
