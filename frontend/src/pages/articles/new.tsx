@@ -37,11 +37,14 @@ const NewDiscussion = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('Article submitted successfully:', data);
+        alert('Article submitted successfully');
       } else {
         console.error('Failed to submit article');
+        alert('Failed to submit article');
       }
     } catch (error) {
       console.error('Error submitting article:', error);
+      alert('Error submitting article');
     }
   };
   
