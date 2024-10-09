@@ -7,11 +7,9 @@ import Cookies from "js-cookie";
 interface ArticlesInterface {
   title: string;
   authors: string;
-  source: string;
   pubyear: string;
   doi: string;
   claim: string;
-  evidence: string;
 }
 
 interface SavedQuery {
@@ -21,7 +19,6 @@ interface SavedQuery {
     startDate: string;
     endDate: string;
     claim: string;
-    evidence: string;
   };
 }
 
@@ -29,49 +26,53 @@ const Home = () => {
   const headers: { key: keyof ArticlesInterface; label: string }[] = [
     { key: "title", label: "Title" },
     { key: "authors", label: "Authors" },
-    { key: "source", label: "Source" },
     { key: "pubyear", label: "Publication Year" },
     { key: "doi", label: "DOI" },
-    { key: "claim", label: "Claim" },
-    { key: "evidence", label: "Evidence" },
+    { key: "claim", label: "Claim" }
   ];
 
-  // State for articles, search, saved queries, loading, and error handling
   const [articles, setArticles] = useState<ArticlesInterface[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<ArticlesInterface[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [claim, setClaim] = useState<string>("");
-  const [evidence, setEvidence] = useState<string>("");
   const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load saved queries from cookies and fetch articles on mount
+  // Load saved queries from cookies on component mount
+  useEffect(() => {
+    const savedQueryKeys = Object.keys(Cookies.get());
+    const uniqueQueries = new Set(savedQueryKeys); // Ensure unique saved searches
+    const loadedSavedQueries = Array.from(uniqueQueries).map((key) => ({
+      queryName: key,
+      queryData: JSON.parse(Cookies.get(key) || '{}'),
+    }));
+    setSavedQueries(loadedSavedQueries);
+  }, []);
+
+  // Fetch verified articles on mount
   useEffect(() => {
     const fetchArticles = async () => {
       try {
-        const response = await fetch("http://localhost:8082/articles");
+        const response = await fetch("http://localhost:8082/articles");  // Assuming this only returns verified articles
         if (!response.ok) {
           throw new Error("Failed to fetch articles");
         }
         const data: ArticlesInterface[] = await response.json();
   
-        // Sanitize data to replace undefined fields with null or empty string
         const sanitizedData = data.map((article) => ({
           ...article,
-          title: article.title || "Untitled",  // Ensure title is never undefined
+          title: article.title || "Untitled",
           authors: article.authors || "Unknown",
-          source: article.source || "Unknown",
           pubyear: article.pubyear || "N/A",
           doi: article.doi || "N/A",
           claim: article.claim || "N/A",
-          evidence: article.evidence || "N/A",
         }));
   
         setArticles(sanitizedData);
-        setFilteredArticles(sanitizedData); // Set initial state of filtered articles
+        setFilteredArticles(sanitizedData);  // Initialize filtered articles to show all
       } catch (error) {
         setError("Error fetching articles. Please try again later.");
       } finally {
@@ -81,17 +82,13 @@ const Home = () => {
   
     fetchArticles();
   }, []);
-  
-  
-  
 
-  // Handle the search logic
+  // Handle search logic
   const handleSearch = (
     query: string,
     startDate: string,
     endDate: string,
-    claim: string,
-    evidence: string
+    claim: string
   ) => {
     let filtered = articles;
 
@@ -99,9 +96,7 @@ const Home = () => {
       filtered = filtered.filter((article) =>
         article.title?.toLowerCase().includes(query.toLowerCase()) ||
         article.authors?.toLowerCase().includes(query.toLowerCase()) ||
-        article.source?.toLowerCase().includes(query.toLowerCase()) ||
-        article.claim?.toLowerCase().includes(query.toLowerCase()) ||
-        article.evidence?.toLowerCase().includes(query.toLowerCase())
+        article.claim?.toLowerCase().includes(query.toLowerCase())
       );
     }
 
@@ -123,21 +118,10 @@ const Home = () => {
       );
     }
 
-    if (evidence) {
-      filtered = filtered.filter((article) =>
-        article.evidence?.toLowerCase().includes(evidence.toLowerCase())
-      );
-    }
-
     setFilteredArticles(filtered);
-    setSearchQuery(query);
-    setStartDate(startDate);
-    setEndDate(endDate);
-    setClaim(claim);
-    setEvidence(evidence);
   };
 
-  // Save the current search query to cookies
+  // Save search query to cookies
   const saveSearchQuery = () => {
     const queryName = prompt("Enter a name for your saved search:");
     if (queryName) {
@@ -146,43 +130,11 @@ const Home = () => {
         startDate,
         endDate,
         claim,
-        evidence,
       };
-      Cookies.set(queryName, JSON.stringify(queryData), { expires: 7 }); // Set cookie to expire in 7 days
-      setSavedQueries([...savedQueries, { queryName, queryData }]); // Update state with new saved query
+      Cookies.set(queryName, JSON.stringify(queryData), { expires: 30 });  // Set expiration to 30 days
+      setSavedQueries([...savedQueries, { queryName, queryData }]);
     }
   };
-
-  // Reapply a saved search query
-  const reapplySearchQuery = (queryData: SavedQuery["queryData"]) => {
-    // Check if queryData exists and is valid
-    if (!queryData) {
-      console.error("Invalid or null query data.");
-      alert("The saved search data is corrupted or unavailable.");
-      return; // Exit early if queryData is invalid
-    }
-  
-    // Log for debugging (optional)
-    console.log("Reapplying query:", queryData);
-  
-    // Safely reapply the search query and fields (empty string fallback)
-    setSearchQuery(queryData.query || "");
-    setStartDate(queryData.startDate || "");
-    setEndDate(queryData.endDate || "");
-    setClaim(queryData.claim || "");
-    setEvidence(queryData.evidence || "");
-  
-    // Trigger search, even if it's invalid data (which will result in no results)
-    handleSearch(
-      queryData.query || "",
-      queryData.startDate || "",
-      queryData.endDate || "",
-      queryData.claim || "",
-      queryData.evidence || ""
-    );
-  };
-  
-
 
   if (loading) {
     return <div>Loading articles...</div>;
@@ -212,7 +164,6 @@ const Home = () => {
             startDate={startDate}
             endDate={endDate}
             claim={claim}
-            evidence={evidence}
           />
         </section>
 
@@ -223,7 +174,7 @@ const Home = () => {
               {savedQueries.map((query) => (
                 <li key={query.queryName}>
                   {query.queryName}
-                  <button onClick={() => reapplySearchQuery(query.queryData)}>Reapply</button>
+                  {/* Remove the reapply button */}
                 </li>
               ))}
             </ul>
