@@ -1,4 +1,3 @@
-// article.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
@@ -15,31 +14,22 @@ export class Article {
   @Prop()
   pubyear: number;
 
-  @Prop({ required: false }) // Ensure this is part of the schema
+  @Prop({ required: false })
   doi: string;
 
   @Prop({ default: 'pending' })
   status: string;
 
-  // @Prop({ default: false })
-  // submitterVerified: boolean;
-
-  // @Prop({ default: false })
-  // moderatorApproved: boolean;
-
-  // @Prop({ default: false })
-  // analystApproved: boolean;
-
-  @Prop({ default: true })
+  @Prop({ default: false })
   submitterVerified: boolean;
 
   @Prop()
   claim: string;
 
-  @Prop({ default: true })
+  @Prop({ default: false }) // Update moderatorApproved to default to false
   moderatorApproved: boolean;
 
-  @Prop({ default: true })
+  @Prop({ default: false }) // Update analystApproved to default to false
   analystApproved: boolean;
 }
 

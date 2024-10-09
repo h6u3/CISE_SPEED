@@ -46,8 +46,8 @@ async getRejectedArticles(): Promise<Article[]> {
   }
 
   @Post(':id/verify')
-  verifyArticle(@Param('id') id: string, @Body('verified') verified: boolean): Promise<Article> {
-    return this.articlesService.verifyArticle(id, verified);
+  verifyArticle(@Param('id') id: string): Promise<Article> {
+    return this.articlesService.verifyArticle(id);
   }
   
 
