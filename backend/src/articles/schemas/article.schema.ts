@@ -5,27 +5,32 @@ export type ArticleDocument = Article & Document;
 
 @Schema()
 export class Article {
-  @Prop()
+  @Prop({ required: true })
   title: string;
 
   @Prop()
   authors: string;
 
   @Prop()
-  source: string;
-
-  @Prop()
   pubyear: number;
 
-  @Prop()
+  @Prop({ required: false })
   doi: string;
+
+  @Prop({ default: 'pending' })
+  status: string;
+
+  @Prop({ default: false })
+  submitterVerified: boolean;
 
   @Prop()
   claim: string;
 
-  @Prop()
-  evidence: string;
+  @Prop({ default: false }) // Update moderatorApproved to default to false
+  moderatorApproved: boolean;
+
+  @Prop({ default: false }) // Update analystApproved to default to false
+  analystApproved: boolean;
 }
 
 export const ArticleSchema = SchemaFactory.createForClass(Article);
- 
