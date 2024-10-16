@@ -20,7 +20,7 @@ const NewDiscussion = () => {
       authors: concatenatedAuthors,
       source,
       pubYear,
-      doi, //,
+      doi, //;
       claim: claim, // assuming 'summary' is intended to be 'claim'
       evidence: linkedDiscussion, // assuming 'linkedDiscussion' is intended to be 'evidence'
     };
