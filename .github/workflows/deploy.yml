@@ -11,7 +11,7 @@ on:
 jobs:
   Test:
     if: github.event.pull_request.merged == true
-    uses: h6u3/CISE_SPEED/.github/workflows/test.yml@develop
+    uses: h6u3/CISE_SPEED/.github/workflows/test.yml@development
 
   Deploy-Production:
     if: github.event.pull_request.merged == true
