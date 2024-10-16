@@ -7,7 +7,7 @@ const NewDiscussion = () => {
   const [source, setSource] = useState("");
   const [pubYear, setPubYear] = useState<number>(0);
   const [doi, setDoi] = useState("");
-  const [summary, setSummary] = useState("");
+  const [claim, setClaim] = useState("");
   const [linkedDiscussion, setLinkedDiscussion] = useState("");
 
   const submitNewArticle = async (event: FormEvent<HTMLFormElement>) => {
@@ -21,7 +21,7 @@ const NewDiscussion = () => {
       source,
       pubYear,
       doi,
-      claim: summary, // assuming 'summary' is intended to be 'claim'
+      claim: claim, // assuming 'summary' is intended to be 'claim'
       evidence: linkedDiscussion, // assuming 'linkedDiscussion' is intended to be 'evidence'
     };
   
@@ -154,12 +154,12 @@ const NewDiscussion = () => {
           }}
         />
 
-        <label htmlFor="summary">Summary:</label>
+        <label htmlFor="Claim">Claim:</label>
         <textarea
           className={formStyles.formTextArea}
-          name="summary"
-          value={summary}
-          onChange={(event) => setSummary(event.target.value)}
+          name="claim"
+          value={claim}
+          onChange={(event) => setClaim(event.target.value)}
         />
 
         <button className={formStyles.formItem} type="submit">
