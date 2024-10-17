@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 jobs:
   Test:
-    uses: h6u3/CISE_SPEED/.github/workflows/test.yml@develop
+    uses: h6u3/CISE_SPEED/.github/workflows/test.yml@development
 
   Deploy-Preview:
     runs-on: ubuntu-latest

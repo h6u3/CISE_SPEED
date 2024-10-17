@@ -1,6 +1,8 @@
 import { FormEvent, useState } from "react";
 import formStyles from "../../styles/Form.module.scss";
 
+const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
 const NewDiscussion = () => {
   const [title, setTitle] = useState("");
   const [authors, setAuthors] = useState<string[]>([]);
@@ -26,7 +28,7 @@ const NewDiscussion = () => {
     };
   
     try {
-      const response = await fetch('http://localhost:8082/articles', {
+      const response = await fetch(apiUrl ? `${apiUrl}/articles` : 'http://localhost:8082/articles', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
