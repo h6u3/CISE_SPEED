@@ -22,6 +22,8 @@ interface SavedQuery {
   queryData: string;
 }
 
+const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
 const Articles: NextPage<ArticlesProps> = ({ articles }) => {
   const headers: { key: keyof ArticlesInterface; label: string }[] = [
     { key: "title", label: "Title" },
@@ -111,7 +113,7 @@ const Articles: NextPage<ArticlesProps> = ({ articles }) => {
 };
 
 export const getStaticProps: GetStaticProps<ArticlesProps> = async () => {
-  const response = await fetch('http://localhost:8082/articles');
+  const response = await fetch(apiUrl ? `${apiUrl}/articles` : 'http://localhost:8082/articles');
   const articles: ArticlesInterface[] = await response.json();
 
   return {

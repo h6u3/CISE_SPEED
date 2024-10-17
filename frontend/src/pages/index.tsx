@@ -22,6 +22,7 @@ interface SavedQuery {
   };
 }
 
+const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 const Home = () => {
   const headers: { key: keyof ArticlesInterface; label: string }[] = [
     { key: "title", label: "Title" },
@@ -56,7 +57,7 @@ const Home = () => {
   useEffect(() => {
     const fetchArticles = async () => {
       try {
-        const response = await fetch("http://localhost:8082/articles");  // Assuming this only returns verified articles
+        const response = await fetch(apiUrl ? `${apiUrl}/articles/all` : 'http://localhost:8082/articles/all');  // Assuming this only returns verified articles
         if (!response.ok) {
           throw new Error("Failed to fetch articles");
         }

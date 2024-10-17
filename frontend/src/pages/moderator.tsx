@@ -13,6 +13,8 @@ interface Article {
   analystApproved: boolean;
 }
 
+const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
 const ModeratorPage = () => {
   const [verifiedArticles, setVerifiedArticles] = useState<Article[]>([]);
   const [unverifiedArticles, setUnverifiedArticles] = useState<Article[]>([]);
@@ -22,7 +24,7 @@ const ModeratorPage = () => {
   // Fetch all articles and categorize them
   const fetchArticles = async () => {
     try {
-      const response = await axios.get('http://localhost:8082/articles/all');
+      const response = await axios.get(apiUrl ? `${apiUrl}/articles/all` : 'http://localhost:8082/articles/all');
       const allArticles: Article[] = response.data;
   
       console.log("Fetched Articles:", allArticles); // Debug to ensure data is fetched
@@ -57,7 +59,7 @@ const ModeratorPage = () => {
     if (!confirmApproval) return;
   
     try {
-      const response = await axios.post(`http://localhost:8082/articles/${id}/approve`);
+      const response = await axios.post(apiUrl ? `${apiUrl}/articles/${id}/approve` : `http://localhost:8082/articles/${id}/approve`);
       console.log('Article approved successfully:', response.data);
       fetchArticles();  // Refresh the lists after action
     } catch (error: any) {
