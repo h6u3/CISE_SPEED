@@ -10,7 +10,7 @@ interface Article {
   submitterVerified: boolean;
   moderatorApproved: boolean;
   analystApproved: boolean;
-  rejectionReason?: string;  // Include rejection reason
+  rejectionReason?: string;
 }
 
 const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -20,25 +20,22 @@ const ModeratorPage = () => {
   const [unverifiedArticles, setUnverifiedArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [limit] = useState(10); // Keep the same limit
+
+  const [limit] = useState(10); // Set limit to 10 articles per page
   const [unverifiedPage, setUnverifiedPage] = useState(1);
   const [totalUnverifiedPages, setTotalUnverifiedPages] = useState(1);
   const [verifiedPage, setVerifiedPage] = useState(1);
   const [totalVerifiedPages, setTotalVerifiedPages] = useState(1);
 
+  // Fetch Unverified Articles with Pagination
   const fetchUnverifiedArticles = async (page = 1) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${apiUrl}/articles/all?page=${page}&limit=${limit}`);
-      const allArticles = Array.isArray(response.data) ? response.data : response.data.articles;
-      const totalCount = response.data.totalCount || allArticles.length;
+      const response = await axios.get(`${apiUrl}/articles/unverified?page=${page}&limit=${limit}`);
+      const { articles, totalCount } = response.data;
 
-      const unverified = allArticles.filter((article: Article) =>
-        !article.submitterVerified && !article.moderatorApproved && !article.analystApproved
-      );
-
-      setUnverifiedArticles(unverified);
-      setTotalUnverifiedPages(Math.ceil(totalCount / limit));
+      setUnverifiedArticles(articles);
+      setTotalUnverifiedPages(Math.ceil(totalCount / limit));  // Calculate total pages
       setError(null);
     } catch (error: any) {
       setError(`Error fetching unverified articles: ${error.message || error}`);
@@ -47,19 +44,15 @@ const ModeratorPage = () => {
     }
   };
 
+  // Fetch Verified Articles with Pagination
   const fetchVerifiedArticles = async (page = 1) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${apiUrl}/articles/all?page=${page}&limit=${limit}`);
-      const allArticles = Array.isArray(response.data) ? response.data : response.data.articles;
-      const totalCount = response.data.totalCount || allArticles.length;
+      const response = await axios.get(`${apiUrl}/articles/verified?page=${page}&limit=${limit}`);
+      const { articles, totalCount } = response.data;
 
-      const verified = allArticles.filter((article: Article) =>
-        article.submitterVerified && article.moderatorApproved
-      );
-
-      setVerifiedArticles(verified);
-      setTotalVerifiedPages(Math.ceil(totalCount / limit));
+      setVerifiedArticles(articles);
+      setTotalVerifiedPages(Math.ceil(totalCount / limit));  // Calculate total pages
       setError(null);
     } catch (error: any) {
       setError(`Error fetching verified articles: ${error.message || error}`);
@@ -68,6 +61,7 @@ const ModeratorPage = () => {
     }
   };
 
+  // Approve an article
   const handleApprove = async (id: string) => {
     const confirmApproval = window.confirm("Are you sure you want to approve this article?");
     if (!confirmApproval) return;
@@ -80,6 +74,7 @@ const ModeratorPage = () => {
     }
   };
 
+  // Reject an article
   const handleReject = async (id: string) => {
     const rejectionReason = prompt("Please enter a reason for rejecting this article:");
     if (!rejectionReason) return;
@@ -92,13 +87,13 @@ const ModeratorPage = () => {
     }
   };
 
-  // Fetch unverified and verified articles whenever the page changes
+  // Fetch articles when pages change
   useEffect(() => {
-    fetchUnverifiedArticles(unverifiedPage);  // Refetch unverified articles when unverifiedPage changes
+    fetchUnverifiedArticles(unverifiedPage);
   }, [unverifiedPage]);
 
   useEffect(() => {
-    fetchVerifiedArticles(verifiedPage);  // Refetch verified articles when verifiedPage changes
+    fetchVerifiedArticles(verifiedPage);
   }, [verifiedPage]);
 
   return (
@@ -115,9 +110,9 @@ const ModeratorPage = () => {
                   <h2>{article.title}</h2>
                   <p>By: {article.authors}</p>
                   <p>Status: Unverified</p>
-                  <p>{article.rejectionReason && `Reason for Rejection: ${article.rejectionReason}`}</p> {/* Display rejection reason */}
+                  <p>{article.rejectionReason && `Reason for Rejection: ${article.rejectionReason}`}</p>
                   <button onClick={() => handleApprove(article._id)}>Verify</button>
-                  <button onClick={() => handleReject(article._id)}>Reject</button> {/* Reject button */}
+                  <button onClick={() => handleReject(article._id)}>Reject</button>
                 </li>
               ))}
             </ul>

@@ -7,7 +7,7 @@ import Cookies from "js-cookie";
 interface ArticlesInterface {
   title: string;
   authors: string;
-  pubyear: string;
+  pubYear: string;
   doi: string;
   claim: string;
   evidence: string;  // Include evidence field
@@ -29,7 +29,7 @@ const Home = () => {
   const headers: { key: keyof ArticlesInterface; label: string }[] = [
     { key: "title", label: "Title" },
     { key: "authors", label: "Authors" },
-    { key: "pubyear", label: "Publication Year" },
+    { key: "pubYear", label: "Publication Year" },
     { key: "doi", label: "DOI" },
     { key: "claim", label: "Claim" },
     { key: "evidence", label: "Evidence" }, // Add evidence to table headers
@@ -68,15 +68,14 @@ const Home = () => {
     try {
       const searchUrl = `${apiUrl}/articles/search?query=${query}&startDate=${startDate}&endDate=${endDate}&claim=${claim}&evidence=${evidence}&page=${page}&limit=${limit}`;
       console.log("API URL being used:", searchUrl);
-
-      const response = await fetch(searchUrl); 
+    
+      const response = await fetch(searchUrl);
       if (!response.ok) {
         throw new Error(`Error: ${response.status} - ${response.statusText}`);
       }
-
+    
       const data = await response.json();
-      console.log("Fetched data:", data);
-
+      console.log("Fetched data:", data);  // Log fetched data to inspect
       setArticles(data.articles);
       setFilteredArticles(data.articles);
       setTotalPages(Math.ceil(data.totalCount / limit));  // Set total pages for pagination
@@ -90,6 +89,8 @@ const Home = () => {
       setLoading(false);
     }
   };
+  
+  
 
   // Fetch articles when the page or search changes
   useEffect(() => {

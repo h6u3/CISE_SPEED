@@ -12,8 +12,8 @@ export class Article {
   authors: string;
 
   @Prop()
-  pubyear: number;
-
+  pubYear: number;
+  
   @Prop({ required: false })
   doi: string;
 
@@ -31,9 +31,6 @@ export class Article {
 
   @Prop({ default: false }) // Update moderatorApproved to default to false
   moderatorApproved: boolean;
-
-  @Prop({ default: false }) // Update analystApproved to default to false
-  analystApproved: boolean;
 
   @Prop()
   rejectionReason?: string; 

@@ -40,19 +40,27 @@ export class ArticlesController {
   }
 
   // Reject an article with a reason
-  @Post(':id/reject')
-  async rejectArticle(
-    @Param('id') id: string,
-    @Body('reason') reason: string
-  ): Promise<Article> {
-    return this.articlesService.rejectArticle(id, reason);
-  }
 
-  // Create a new article (check for duplicate DOI or title)
+@Post(':id/reject')
+async rejectArticle(
+  @Param('id') id: string,
+  @Body('reason') reason: string
+): Promise<Article> {
+  return this.articlesService.rejectArticle(id, reason);
+}
+
+
   @Post()
-  async create(@Body() createArticleDto: any) {
+  async create(
+    @Body() createArticleDto: { title: string; authors: string; doi: string; pubYear: number } // Use "pubyear" (lowercase "y")
+  ): Promise<Article> {
+    console.log('Received createArticleDto:', createArticleDto);
+  
+    // Call the service to handle the creation
     return this.articlesService.create(createArticleDto);
   }
+  
+
 
   // Fetch articles pending for moderation
   @Get('moderation')
@@ -72,9 +80,38 @@ export class ArticlesController {
     return this.articlesService.approveArticle(id);
   }
 
-  // Analyst approval endpoint
-  @Post(':id/analyst-approve')
-  async approveArticleByAnalyst(@Param('id') id: string): Promise<Article> {
-    return this.articlesService.approveArticleByAnalyst(id);
-  }
+
+  @Get('unverified')
+async getUnverifiedArticles(
+  @Query('page') page: number = 1,
+  @Query('limit') limit: number = 10
+): Promise<{ articles: Article[], totalCount: number }> {
+  return this.articlesService.getUnverifiedArticles(page, limit);
+}
+
+@Get('verified')
+async getVerifiedArticles(
+  @Query('page') page: number = 1,
+  @Query('limit') limit: number = 10
+): Promise<{ articles: Article[], totalCount: number }> {
+  return this.articlesService.getVerifiedArticles(page, limit);
+}
+
+
+@Get('analyst-queue')
+async getAnalystQueue(
+  @Query('page') page: number = 1,
+  @Query('limit') limit: number = 10
+): Promise<{ articles: Article[], totalCount: number }> {
+  return this.articlesService.getAnalystQueue(page, limit);
+}
+
+@Post(':id/analyst-edit')
+async updateAnalystEdit(
+  @Param('id') id: string,
+  @Body() updateDto: { claim: string; evidence: string }
+): Promise<Article> {
+  return this.articlesService.updateAnalystEdit(id, updateDto);
+}
+
 }
