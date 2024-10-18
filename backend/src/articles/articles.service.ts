@@ -7,59 +7,86 @@ import { Article, ArticleDocument } from './schemas/article.schema';
 export class ArticlesService {
   private readonly logger = new Logger(ArticlesService.name);
 
+  constructor(@InjectModel(Article.name) private articleModel: Model<ArticleDocument>) { }
 
-  
-  constructor(
-    @InjectModel(Article.name) private articleModel: Model<ArticleDocument>,
-  ) {}
+  // Fetch all articles with pagination
+  async getAllArticles(page: number, limit: number): Promise<{ articles: Article[], totalCount: number }> {
+    const skip = (page - 1) * limit;
+    const [articles, totalCount] = await Promise.all([
+      this.articleModel.find().skip(skip).limit(limit).exec(),
+      this.articleModel.countDocuments().exec(),
+    ]);
 
-
-  // Fetch rejected articles
-  async getRejectedArticles(): Promise<Article[]> {
-    return this.articleModel.find({ status: 'rejected' }).exec();
+    return { articles, totalCount };
   }
 
-  // Fetch all articles (approved, pending, rejected)
-  async getAllArticles(): Promise<Article[]> {
-    return this.articleModel.find().exec(); // Fetch all articles from the database
+
+  // Fetch rejected articles with pagination
+  async getRejectedArticles(page: number, limit: number): Promise<{ articles: Article[], totalCount: number }> {
+    const skip = (page - 1) * limit;
+    const [articles, totalCount] = await Promise.all([
+      this.articleModel.find({ status: 'rejected' }).skip(skip).limit(limit).exec(),
+      this.articleModel.countDocuments({ status: 'rejected' }).exec(),
+    ]);
+    return { articles, totalCount };
   }
 
-  
-  // for searcher (only fetch verified)
-async getVerifiedArticles(): Promise<Article[]> {
-  return this.articleModel.find({
-    submitterVerified: true,
-    moderatorApproved: true,
-    analystApproved: true,
-  }).exec();
-}
+  // Fetch verified articles with pagination
+  async getVerifiedArticles(page: number, limit: number): Promise<{ articles: Article[], totalCount: number }> {
+    const skip = (page - 1) * limit;
+    const [articles, totalCount] = await Promise.all([
+      this.articleModel.find({
+        submitterVerified: true,
+        moderatorApproved: true,
+        analystApproved: true,
+      }).skip(skip).limit(limit).exec(),
+      this.articleModel.countDocuments({
+        submitterVerified: true,
+        moderatorApproved: true,
+        analystApproved: true,
+      }).exec(),
+    ]);
+    return { articles, totalCount };
+  }
 
-// async getVerifiedArticles(): Promise<Article[]> {
-//   return this.articleModel.find().exec();  // Fetch all articles temporarily for testing
-// }
+  // // Fetch all articles (without pagination)
+  // async getAllArticles(): Promise<Article[]> {
+  //   return this.articleModel.find().exec();  // Fetch all articles from the database
+  // }
 
-  // Fetch articles that need moderator approval
+  // Fetch articles pending moderation
   async getPendingArticles(): Promise<Article[]> {
-    // Show articles where submitterVerified is true and moderator has not yet approved
-    return this.articleModel.find({ submitterVerified: true, moderatorApproved: false }).exec();
+    return this.articleModel.find({
+      submitterVerified: true,
+      moderatorApproved: false,
+    }).exec();
   }
 
-  // Create a new article
+  // Create a new article (auto-reject if a duplicate DOI or title is found)
+  // Create a new article (auto-reject if a duplicate DOI or title is found)
   async create(createArticleDto: any): Promise<Article> {
+    const existingArticle = await this.articleModel.findOne({
+      $or: [{ doi: createArticleDto.doi }, { title: createArticleDto.title }],
+    });
 
-    console.log('Received article data in the backend:', createArticleDto);
+    if (existingArticle) {
+      return this.articleModel.create({
+        ...createArticleDto,
+        status: 'rejected',
+        rejectionReason: 'Duplicate submission detected (same DOI or title)',
+      });
+    }
+
     const newArticle = new this.articleModel({
       ...createArticleDto,
-      // verified: false,  // Auto-flag as unverified
-      // moderatorApproved: false,  // Default to moderator not approved
-      // analystApproved: false,    // Default to analyst not approved
-      // status: 'pending',         // Default status is pending
-      pubyear: createArticleDto.pubYear,  // Map pubYear to pubyear (lowercase)
+      pubyear: createArticleDto.pubyear,
+      evidence: createArticleDto.evidence,  // Include evidence
+      status: 'pending',
     });
 
     return newArticle.save();
   }
-  
+
 
   // Update article verification status
   async verifyArticle(id: string): Promise<Article> {
@@ -68,57 +95,36 @@ async getVerifiedArticles(): Promise<Article[]> {
       { moderatorApproved: true, status: 'approved' },
       { new: true }
     );
-  
     if (!article) {
       throw new BadRequestException('Article not found');
     }
-  
     return article;
   }
 
   // Approve an article by the moderator
   async approveArticle(id: string): Promise<Article> {
-    try {
-      const article = await this.articleModel.findByIdAndUpdate(
-        id,
-        {
-          submitterVerified: true,  // Set to true upon moderation approval
-          moderatorApproved: true,  // Mark as approved by the moderator
-          status: 'approved'
-        },
-        { new: true }
-      );
-  
-      if (!article) {
-        this.logger.error(`Article with ID ${id} not found`);
-        throw new BadRequestException('Article not found');
-      }
-  
-      return article;
-    } catch (error) {
-      this.logger.error(`Failed to approve article with ID ${id}. Error: ${error.message}`, error.stack);
-      throw new BadRequestException(`Failed to approve article: ${error.message}`);
+    const article = await this.articleModel.findByIdAndUpdate(
+      id,
+      { submitterVerified: true, moderatorApproved: true, status: 'approved' },
+      { new: true }
+    );
+    if (!article) {
+      this.logger.error(`Article with ID ${id} not found`);
+      throw new BadRequestException('Article not found');
     }
+    return article;
   }
-  
-  
 
-  // Reject an article
+  // Reject an article with a reason (manual rejection by moderator)
   async rejectArticle(id: string, reason: string): Promise<Article> {
     const article = await this.articleModel.findByIdAndUpdate(
       id,
-      {
-        status: 'rejected',  // Set status to rejected
-        moderatorApproved: false,  // Ensure moderator approval is false
-        rejectionReason: reason,   // Store the rejection reason
-      },
-      { new: true }  // Return the updated document
+      { status: 'rejected', moderatorApproved: false, rejectionReason: reason },
+      { new: true }
     );
-
     if (!article) {
       throw new BadRequestException('Article not found');
     }
-
     return article;
   }
 
@@ -126,46 +132,50 @@ async getVerifiedArticles(): Promise<Article[]> {
   async approveArticleByAnalyst(id: string): Promise<Article> {
     const article = await this.articleModel.findByIdAndUpdate(
       id,
-      { analystApproved: true, status: 'final-approved' },  // Mark as approved by analyst
-      { new: true }  // Return the updated document
+      { analystApproved: true, status: 'final-approved' },
+      { new: true }
     );
-
     if (!article) {
       throw new BadRequestException('Article not found');
     }
-
     return article;
   }
 
   // Search articles by criteria (title, author, doi, or status)
-  async searchArticles(query: any): Promise<Article[]> {
-    const searchCriteria = {};
+  // Search articles by criteria (title, author, doi, or status)
+  async searchArticles(
+    searchCriteria: { query?: string; startDate?: string; endDate?: string; claim?: string; evidence?: string },
+    page: number,
+    limit: number
+  ): Promise<{ articles: Article[], totalCount: number }> {
+    const skip = (page - 1) * limit;
 
-    // Add search criteria based on query parameters (e.g., title, author, etc.)
-    if (query.title) {
-        searchCriteria['title'] = { $regex: query.title, $options: 'i' };  // Case-insensitive
+    const queryFilter: any = {};
+    if (searchCriteria.query) {
+      queryFilter.$or = [
+        { title: { $regex: searchCriteria.query, $options: 'i' } },
+        { authors: { $regex: searchCriteria.query, $options: 'i' } },
+        { claim: { $regex: searchCriteria.query, $options: 'i' } },
+      ];
     }
-    if (query.authors) {
-        searchCriteria['authors'] = { $regex: query.authors, $options: 'i' };  // Case-insensitive
+    if (searchCriteria.startDate) {
+      queryFilter.pubyear = { $gte: parseInt(searchCriteria.startDate) };
     }
-    if (query.doi) {
-        searchCriteria['doi'] = { $regex: query.doi, $options: 'i' };  // Case-insensitive
+    if (searchCriteria.endDate) {
+      queryFilter.pubyear = { ...queryFilter.pubyear, $lte: parseInt(searchCriteria.endDate) };
     }
-    if (query.status) {
-        searchCriteria['status'] = query.status;
+    if (searchCriteria.claim) {
+      queryFilter.claim = { $regex: searchCriteria.claim, $options: 'i' };
+    }
+    if (searchCriteria.evidence) {
+      queryFilter.evidence = { $regex: searchCriteria.evidence, $options: 'i' };
     }
 
-    // Log the search criteria
-    this.logger.log(`Searching articles with criteria: ${JSON.stringify(searchCriteria)}`);
+    const [articles, totalCount] = await Promise.all([
+      this.articleModel.find(queryFilter).skip(skip).limit(limit).exec(),
+      this.articleModel.countDocuments(queryFilter).exec(),
+    ]);
 
-    // Execute the search
-    const result = await this.articleModel.find(searchCriteria).exec();
-
-    // Log the result
-    this.logger.log(`Search result: ${JSON.stringify(result)}`);
-
-    return result;
-}
-
-
+    return { articles, totalCount };
+  }
 }

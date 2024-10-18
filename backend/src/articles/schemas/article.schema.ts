@@ -26,6 +26,9 @@ export class Article {
   @Prop()
   claim: string;
 
+  @Prop()
+  evidence: string;
+
   @Prop({ default: false }) // Update moderatorApproved to default to false
   moderatorApproved: boolean;
 
