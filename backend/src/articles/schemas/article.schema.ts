@@ -12,8 +12,8 @@ export class Article {
   authors: string;
 
   @Prop()
-  pubyear: number;
-
+  pubYear: number;
+  
   @Prop({ required: false })
   doi: string;
 
@@ -26,11 +26,14 @@ export class Article {
   @Prop()
   claim: string;
 
+  @Prop()
+  evidence: string;
+
   @Prop({ default: false }) // Update moderatorApproved to default to false
   moderatorApproved: boolean;
 
-  @Prop({ default: false }) // Update analystApproved to default to false
-  analystApproved: boolean;
+  @Prop()
+  rejectionReason?: string; 
 }
 
 export const ArticleSchema = SchemaFactory.createForClass(Article);

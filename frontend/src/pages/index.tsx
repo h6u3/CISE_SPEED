@@ -7,9 +7,10 @@ import Cookies from "js-cookie";
 interface ArticlesInterface {
   title: string;
   authors: string;
-  pubyear: string;
+  pubYear: string;
   doi: string;
   claim: string;
+  evidence: string;  // Include evidence field
 }
 
 interface SavedQuery {
@@ -19,6 +20,7 @@ interface SavedQuery {
     startDate: string;
     endDate: string;
     claim: string;
+    evidence: string;  // Include evidence in saved queries
   };
 }
 
@@ -27,9 +29,10 @@ const Home = () => {
   const headers: { key: keyof ArticlesInterface; label: string }[] = [
     { key: "title", label: "Title" },
     { key: "authors", label: "Authors" },
-    { key: "pubyear", label: "Publication Year" },
+    { key: "pubYear", label: "Publication Year" },
     { key: "doi", label: "DOI" },
-    { key: "claim", label: "Claim" }
+    { key: "claim", label: "Claim" },
+    { key: "evidence", label: "Evidence" }, // Add evidence to table headers
   ];
 
   const [articles, setArticles] = useState<ArticlesInterface[]>([]);
@@ -38,88 +41,76 @@ const Home = () => {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [claim, setClaim] = useState<string>("");
+  const [evidence, setEvidence] = useState<string>(""); // Add state for evidence
+
+  const [page, setPage] = useState(1); // Current page
+  const [limit] = useState(10); // Limit per page
+  const [totalPages, setTotalPages] = useState(1); // Total pages
   const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load saved queries from cookies on component mount
+  // Load saved queries from cookies
   useEffect(() => {
-    const savedQueryKeys = Object.keys(Cookies.get());
-    const uniqueQueries = new Set(savedQueryKeys); // Ensure unique saved searches
-    const loadedSavedQueries = Array.from(uniqueQueries).map((key) => ({
-      queryName: key,
-      queryData: JSON.parse(Cookies.get(key) || '{}'),
-    }));
-    setSavedQueries(loadedSavedQueries);
+    const savedSearches = Object.keys(Cookies.get()).map((key) => {
+      const queryData = Cookies.get(key);
+      return {
+        queryName: key,
+        queryData: queryData ? JSON.parse(queryData) : null,
+      };
+    }).filter(item => item.queryData); // Filter out any null data
+    setSavedQueries(savedSearches as SavedQuery[]);
   }, []);
 
-  // Fetch verified articles on mount
-  useEffect(() => {
-    const fetchArticles = async () => {
-      try {
-        const response = await fetch(apiUrl ? `${apiUrl}/articles/all` : 'http://localhost:8082/articles/all');  // Assuming this only returns verified articles
-        if (!response.ok) {
-          throw new Error("Failed to fetch articles");
-        }
-        const data: ArticlesInterface[] = await response.json();
-  
-        const sanitizedData = data.map((article) => ({
-          ...article,
-          title: article.title || "Untitled",
-          authors: article.authors || "Unknown",
-          pubyear: article.pubyear || "N/A",
-          doi: article.doi || "N/A",
-          claim: article.claim || "N/A",
-        }));
-  
-        setArticles(sanitizedData);
-        setFilteredArticles(sanitizedData);  // Initialize filtered articles to show all
-      } catch (error) {
-        setError("Error fetching articles. Please try again later.");
-      } finally {
-        setLoading(false);
+  // Function to fetch articles from the backend with search and pagination
+  const fetchArticles = async (query = "", startDate = "", endDate = "", claim = "", evidence = "") => {
+    setLoading(true);
+    try {
+      const searchUrl = `${apiUrl}/articles/search?query=${query}&startDate=${startDate}&endDate=${endDate}&claim=${claim}&evidence=${evidence}&page=${page}&limit=${limit}`;
+      console.log("API URL being used:", searchUrl);
+    
+      const response = await fetch(searchUrl);
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status} - ${response.statusText}`);
       }
-    };
+    
+      const data = await response.json();
+      console.log("Fetched data:", data);  // Log fetched data to inspect
+      setArticles(data.articles);
+      setFilteredArticles(data.articles);
+      setTotalPages(Math.ceil(data.totalCount / limit));  // Set total pages for pagination
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(`Error fetching articles: ${error.message}`);
+      } else {
+        setError("Error fetching articles: An unknown error occurred.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
   
-    fetchArticles();
-  }, []);
+  
+
+  // Fetch articles when the page or search changes
+  useEffect(() => {
+    fetchArticles(searchQuery, startDate, endDate, claim, evidence); // Include evidence in fetch
+  }, [page, searchQuery, startDate, endDate, claim, evidence]);
 
   // Handle search logic
   const handleSearch = (
     query: string,
     startDate: string,
     endDate: string,
-    claim: string
+    claim: string,
+    evidence: string  // Add evidence to handleSearch
   ) => {
-    let filtered = articles;
-
-    if (query.trim() !== "") {
-      filtered = filtered.filter((article) =>
-        article.title?.toLowerCase().includes(query.toLowerCase()) ||
-        article.authors?.toLowerCase().includes(query.toLowerCase()) ||
-        article.claim?.toLowerCase().includes(query.toLowerCase())
-      );
-    }
-
-    if (startDate) {
-      filtered = filtered.filter(
-        (article) => parseInt(article.pubyear) >= parseInt(startDate)
-      );
-    }
-
-    if (endDate) {
-      filtered = filtered.filter(
-        (article) => parseInt(article.pubyear) <= parseInt(endDate)
-      );
-    }
-
-    if (claim) {
-      filtered = filtered.filter((article) =>
-        article.claim?.toLowerCase().includes(claim.toLowerCase())
-      );
-    }
-
-    setFilteredArticles(filtered);
+    setSearchQuery(query);
+    setStartDate(startDate);
+    setEndDate(endDate);
+    setClaim(claim);
+    setEvidence(evidence);  // Update evidence state
+    setPage(1);  // Reset to the first page when searching
   };
 
   // Save search query to cookies
@@ -131,10 +122,16 @@ const Home = () => {
         startDate,
         endDate,
         claim,
+        evidence,  // Include evidence in saved queries
       };
-      Cookies.set(queryName, JSON.stringify(queryData), { expires: 30 });  // Set expiration to 30 days
+      Cookies.set(queryName, JSON.stringify(queryData), { expires: 30 });
       setSavedQueries([...savedQueries, { queryName, queryData }]);
     }
+  };
+
+  // Handle page changes
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
   if (loading) {
@@ -165,6 +162,7 @@ const Home = () => {
             startDate={startDate}
             endDate={endDate}
             claim={claim}
+            evidence={evidence}  // Pass evidence to SearchBar
           />
         </section>
 
@@ -175,7 +173,6 @@ const Home = () => {
               {savedQueries.map((query) => (
                 <li key={query.queryName}>
                   {query.queryName}
-                  {/* Remove the reapply button */}
                 </li>
               ))}
             </ul>
@@ -185,6 +182,18 @@ const Home = () => {
         <section className="article-section">
           <h2>View Articles</h2>
           <SortableTable headers={headers} data={filteredArticles} />
+
+          <div className="pagination">
+            {Array.from({ length: totalPages }, (_, index) => (
+              <button
+                key={index}
+                onClick={() => handlePageChange(index + 1)}
+                disabled={page === index + 1}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
         </section>
       </main>
 

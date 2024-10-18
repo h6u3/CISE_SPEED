@@ -10,7 +10,7 @@ const NewDiscussion = () => {
   const [pubYear, setPubYear] = useState<number>(0);
   const [doi, setDoi] = useState("");
   const [claim, setClaim] = useState("");
-  const [linkedDiscussion, setLinkedDiscussion] = useState("");
+  const [evidence, setEvidence] = useState(""); // Added for evidence input
 
   const submitNewArticle = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -22,9 +22,9 @@ const NewDiscussion = () => {
       authors: concatenatedAuthors,
       source,
       pubYear,
-      doi, //:D
-      claim: claim, // assuming 'summary' is intended to be 'claim'
-      evidence: linkedDiscussion, // assuming 'linkedDiscussion' is intended to be 'evidence'
+      doi,
+      claim,
+      evidence, // Evidence field included in the submission data
     };
   
     try {
@@ -51,8 +51,7 @@ const NewDiscussion = () => {
   };
   
 
-  // Some helper methods for the authors array
-
+  // Helper methods for authors array
   const addAuthor = () => {
     setAuthors(authors.concat([""]));
   };
@@ -63,14 +62,11 @@ const NewDiscussion = () => {
 
   const changeAuthor = (index: number, value: string) => {
     setAuthors(
-      authors.map((oldValue, i) => {
-        return index === i ? value : oldValue;
-      })
+      authors.map((oldValue, i) => (index === i ? value : oldValue))
     );
   };
 
   // Return the full form
-
   return (
     <div className="container">
       <h1>New Article</h1>
@@ -82,54 +78,38 @@ const NewDiscussion = () => {
           name="title"
           id="title"
           value={title}
-          onChange={(event) => {
-            setTitle(event.target.value);
-          }}
+          onChange={(event) => setTitle(event.target.value)}
         />
 
         <label htmlFor="author">Authors:</label>
-        {authors.map((author, index) => {
-          return (
-            <div key={`author ${index}`} className={formStyles.arrayItem}>
-              <input
-                type="text"
-                name="author"
-                value={author}
-                onChange={(event) => changeAuthor(index, event.target.value)}
-                className={formStyles.formItem}
-              />
-              <button
-                onClick={() => removeAuthor(index)}
-                className={formStyles.buttonItem}
-                style={{ marginLeft: "3rem" }}
-                type="button"
-              >
-                -
-              </button>
-            </div>
-          );
-        })}
+        {authors.map((author, index) => (
+          <div key={`author ${index}`} className={formStyles.arrayItem}>
+            <input
+              type="text"
+              name="author"
+              value={author}
+              onChange={(event) => changeAuthor(index, event.target.value)}
+              className={formStyles.formItem}
+            />
+            <button
+              onClick={() => removeAuthor(index)}
+              className={formStyles.buttonItem}
+              style={{ marginLeft: "3rem" }}
+              type="button"
+            >
+              -
+            </button>
+          </div>
+        ))}
         <button
-          onClick={() => addAuthor()}
+          onClick={addAuthor}
           className={formStyles.buttonItem}
           style={{ marginLeft: "auto" }}
           type="button"
         >
           +
         </button>
-{/*
-        <label htmlFor="source">Source:</label>
-        <input
-          className={formStyles.formItem}
-          type="text"
-          name="source"
-          id="source"
-          value={source}
-          onChange={(event) => {
-            setSource(event.target.value);
-          }}
-        />
-*/}
+
         <label htmlFor="pubYear">Publication Year:</label>
         <input
           className={formStyles.formItem}
@@ -139,11 +119,7 @@ const NewDiscussion = () => {
           value={pubYear}
           onChange={(event) => {
             const val = event.target.value;
-            if (val === "") {
-              setPubYear(0);
-            } else {
-              setPubYear(parseInt(val));
-            }
+            setPubYear(val === "" ? 0 : parseInt(val));
           }}
         />
 
@@ -154,9 +130,7 @@ const NewDiscussion = () => {
           name="doi"
           id="doi"
           value={doi}
-          onChange={(event) => {
-            setDoi(event.target.value);
-          }}
+          onChange={(event) => setDoi(event.target.value)}
         />
 
         <label htmlFor="Claim">Claim:</label>
@@ -165,6 +139,14 @@ const NewDiscussion = () => {
           name="claim"
           value={claim}
           onChange={(event) => setClaim(event.target.value)}
+        />
+
+        <label htmlFor="Evidence">Evidence:</label> {/* Added Evidence field */}
+        <textarea
+          className={formStyles.formTextArea}
+          name="evidence"
+          value={evidence}
+          onChange={(event) => setEvidence(event.target.value)}
         />
 
         <button className={formStyles.formItem} type="submit">
