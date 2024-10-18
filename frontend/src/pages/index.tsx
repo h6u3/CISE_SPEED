@@ -50,6 +50,18 @@ const Home = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load saved queries from cookies
+  useEffect(() => {
+    const savedSearches = Object.keys(Cookies.get()).map((key) => {
+      const queryData = Cookies.get(key);
+      return {
+        queryName: key,
+        queryData: queryData ? JSON.parse(queryData) : null,
+      };
+    }).filter(item => item.queryData); // Filter out any null data
+    setSavedQueries(savedSearches as SavedQuery[]);
+  }, []);
+
   // Function to fetch articles from the backend with search and pagination
   const fetchArticles = async (query = "", startDate = "", endDate = "", claim = "", evidence = "") => {
     setLoading(true);

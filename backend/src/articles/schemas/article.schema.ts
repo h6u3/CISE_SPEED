@@ -34,6 +34,9 @@ export class Article {
 
   @Prop({ default: false }) // Update analystApproved to default to false
   analystApproved: boolean;
+
+  @Prop()
+  rejectionReason?: string; 
 }
 
 export const ArticleSchema = SchemaFactory.createForClass(Article);

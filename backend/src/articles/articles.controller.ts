@@ -7,19 +7,18 @@ export class ArticlesController {
   constructor(private readonly articlesService: ArticlesService) {}
 
   // Fetch and search articles with pagination
-// Fetch and search articles with pagination
-@Get('search')
-async searchArticles(
-  @Query('query') query: string,
-  @Query('startDate') startDate: string,
-  @Query('endDate') endDate: string,
-  @Query('claim') claim: string,
-  @Query('evidence') evidence: string, // Include evidence in the query
-  @Query('page') page: number = 1,
-  @Query('limit') limit: number = 10
-): Promise<{ articles: Article[], totalCount: number }> {
-  return this.articlesService.searchArticles({ query, startDate, endDate, claim, evidence }, page, limit);
-}
+  @Get('search')
+  async searchArticles(
+    @Query('query') query: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('claim') claim: string,
+    @Query('evidence') evidence: string, // Include evidence in the query
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10
+  ): Promise<{ articles: Article[], totalCount: number }> {
+    return this.articlesService.searchArticles({ query, startDate, endDate, claim, evidence }, page, limit);
+  }
 
   // Fetch all articles with pagination
   @Get('all')
@@ -38,6 +37,15 @@ async searchArticles(
     @Query('limit') limit: number = 10
   ): Promise<{ articles: Article[], totalCount: number }> {
     return this.articlesService.getRejectedArticles(page, limit);
+  }
+
+  // Reject an article with a reason
+  @Post(':id/reject')
+  async rejectArticle(
+    @Param('id') id: string,
+    @Body('reason') reason: string
+  ): Promise<Article> {
+    return this.articlesService.rejectArticle(id, reason);
   }
 
   // Create a new article (check for duplicate DOI or title)
@@ -62,15 +70,6 @@ async searchArticles(
   @Post(':id/approve')
   async approveArticle(@Param('id') id: string): Promise<Article> {
     return this.articlesService.approveArticle(id);
-  }
-
-  // Reject an article with a reason
-  @Post(':id/reject')
-  async rejectArticle(
-    @Param('id') id: string,
-    @Body('reason') reason: string
-  ): Promise<Article> {
-    return this.articlesService.rejectArticle(id, reason);
   }
 
   // Analyst approval endpoint

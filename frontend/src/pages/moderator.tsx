@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import styles from '../components/nav/ModeratorPage.module.scss';
 
-// Define the structure of an article
 interface Article {
   _id: string;
   title: string;
@@ -11,6 +10,7 @@ interface Article {
   submitterVerified: boolean;
   moderatorApproved: boolean;
   analystApproved: boolean;
+  rejectionReason?: string;  // Include rejection reason
 }
 
 const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -18,76 +18,94 @@ const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 const ModeratorPage = () => {
   const [verifiedArticles, setVerifiedArticles] = useState<Article[]>([]);
   const [unverifiedArticles, setUnverifiedArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limit] = useState(10); // Keep the same limit
+  const [unverifiedPage, setUnverifiedPage] = useState(1);
+  const [totalUnverifiedPages, setTotalUnverifiedPages] = useState(1);
+  const [verifiedPage, setVerifiedPage] = useState(1);
+  const [totalVerifiedPages, setTotalVerifiedPages] = useState(1);
 
-  // Fetch all articles and categorize them
-  const fetchArticles = async () => {
+  const fetchUnverifiedArticles = async (page = 1) => {
     try {
-      const response = await axios.get(apiUrl ? `${apiUrl}/articles/all` : 'http://localhost:8082/articles/all');
-      const allArticles: Article[] = response.data;
-  
-      console.log("Fetched Articles:", allArticles); // Debug to ensure data is fetched
-  
-      // Unverified Articles: All fields are initially false
-      const unverified = allArticles.filter((article) => 
+      setLoading(true);
+      const response = await axios.get(`${apiUrl}/articles/all?page=${page}&limit=${limit}`);
+      const allArticles = Array.isArray(response.data) ? response.data : response.data.articles;
+      const totalCount = response.data.totalCount || allArticles.length;
+
+      const unverified = allArticles.filter((article: Article) =>
         !article.submitterVerified && !article.moderatorApproved && !article.analystApproved
       );
-  
-      // Verified Articles: submitterVerified and moderatorApproved are true
-      const verified = allArticles.filter((article) => 
-        article.submitterVerified && article.moderatorApproved
-      );
-  
+
       setUnverifiedArticles(unverified);
-      setVerifiedArticles(verified);
+      setTotalUnverifiedPages(Math.ceil(totalCount / limit));
       setError(null);
     } catch (error: any) {
-      console.error("Error fetching articles:", error);
-      setError(`Error fetching articles: ${error.message || error}`);
+      setError(`Error fetching unverified articles: ${error.message || error}`);
     } finally {
       setLoading(false);
     }
   };
-  
 
-  // Approve an article
-  const handleApprove = async (id: string) => {
-    console.log("Approving article with ID:", id); // Log the ID to check if it's correct
-  
-    const confirmApproval = window.confirm("Are you sure you want to approve this article?");
-    if (!confirmApproval) return;
-  
+  const fetchVerifiedArticles = async (page = 1) => {
     try {
-      const response = await axios.post(apiUrl ? `${apiUrl}/articles/${id}/approve` : `http://localhost:8082/articles/${id}/approve`);
-      console.log('Article approved successfully:', response.data);
-      fetchArticles();  // Refresh the lists after action
+      setLoading(true);
+      const response = await axios.get(`${apiUrl}/articles/all?page=${page}&limit=${limit}`);
+      const allArticles = Array.isArray(response.data) ? response.data : response.data.articles;
+      const totalCount = response.data.totalCount || allArticles.length;
+
+      const verified = allArticles.filter((article: Article) =>
+        article.submitterVerified && article.moderatorApproved
+      );
+
+      setVerifiedArticles(verified);
+      setTotalVerifiedPages(Math.ceil(totalCount / limit));
+      setError(null);
     } catch (error: any) {
-      console.error("Error approving article:", error.response?.data || error.message);
-      alert(`Failed to approve the article. ${error.response?.data?.message || 'Internal server error.'}`);
+      setError(`Error fetching verified articles: ${error.message || error}`);
+    } finally {
+      setLoading(false);
     }
   };
-  
-  
-  
+
+  const handleApprove = async (id: string) => {
+    const confirmApproval = window.confirm("Are you sure you want to approve this article?");
+    if (!confirmApproval) return;
+
+    try {
+      await axios.post(`${apiUrl}/articles/${id}/approve`);
+      fetchUnverifiedArticles(unverifiedPage); // Refresh unverified articles after approval
+    } catch (error: any) {
+      alert(`Failed to approve the article. ${error.message || 'Internal server error.'}`);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    const rejectionReason = prompt("Please enter a reason for rejecting this article:");
+    if (!rejectionReason) return;
+
+    try {
+      await axios.post(`${apiUrl}/articles/${id}/reject`, { reason: rejectionReason });
+      fetchUnverifiedArticles(unverifiedPage); // Refresh unverified articles after rejection
+    } catch (error: any) {
+      alert(`Failed to reject the article. ${error.message || 'Internal server error.'}`);
+    }
+  };
+
+  // Fetch unverified and verified articles whenever the page changes
+  useEffect(() => {
+    fetchUnverifiedArticles(unverifiedPage);  // Refetch unverified articles when unverifiedPage changes
+  }, [unverifiedPage]);
 
   useEffect(() => {
-    fetchArticles();
-  }, []);
-
-  if (loading) {
-    return <p>Loading articles...</p>;
-  }
-
-  if (error) {
-    return <p>{error}</p>;
-  }
+    fetchVerifiedArticles(verifiedPage);  // Refetch verified articles when verifiedPage changes
+  }, [verifiedPage]);
 
   return (
     <div className={styles.container}>
       <h1>Articles Pending Moderation</h1>
       <div className={styles.content}>
-        {/* Left: Unverified Articles */}
+        {/* Unverified Articles */}
         <div className={styles.unverified}>
           <h2>Unverified Articles</h2>
           {unverifiedArticles.length > 0 ? (
@@ -97,16 +115,31 @@ const ModeratorPage = () => {
                   <h2>{article.title}</h2>
                   <p>By: {article.authors}</p>
                   <p>Status: Unverified</p>
+                  <p>{article.rejectionReason && `Reason for Rejection: ${article.rejectionReason}`}</p> {/* Display rejection reason */}
                   <button onClick={() => handleApprove(article._id)}>Verify</button>
+                  <button onClick={() => handleReject(article._id)}>Reject</button> {/* Reject button */}
                 </li>
               ))}
             </ul>
           ) : (
-            <p>No unverified articles.</p>
+            <p>No unverified articles available on this page.</p>
           )}
+
+          {/* Unverified pagination */}
+          <div className={styles.pagination}>
+            {Array.from({ length: totalUnverifiedPages }, (_, index) => (
+              <button
+                key={index}
+                onClick={() => setUnverifiedPage(index + 1)}
+                disabled={unverifiedPage === index + 1}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Right: Verified Articles */}
+        {/* Verified Articles */}
         <div className={styles.verified}>
           <h2>Verified and Approved Articles</h2>
           {verifiedArticles.length > 0 ? (
@@ -120,8 +153,21 @@ const ModeratorPage = () => {
               ))}
             </ul>
           ) : (
-            <p>No verified articles available.</p>
+            <p>No verified articles available on this page.</p>
           )}
+
+          {/* Verified pagination */}
+          <div className={styles.pagination}>
+            {Array.from({ length: totalVerifiedPages }, (_, index) => (
+              <button
+                key={index}
+                onClick={() => setVerifiedPage(index + 1)}
+                disabled={verifiedPage === index + 1}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

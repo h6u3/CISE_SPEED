@@ -33,21 +33,26 @@ export class ArticlesService {
 
   // Fetch verified articles with pagination
   async getVerifiedArticles(page: number, limit: number): Promise<{ articles: Article[], totalCount: number }> {
-    const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit; // Calculate how many documents to skip based on the current page
+  
     const [articles, totalCount] = await Promise.all([
-      this.articleModel.find({
-        submitterVerified: true,
-        moderatorApproved: true,
-        analystApproved: true,
-      }).skip(skip).limit(limit).exec(),
+      this.articleModel
+        .find({
+          submitterVerified: true,
+          moderatorApproved: true,
+        })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
       this.articleModel.countDocuments({
         submitterVerified: true,
         moderatorApproved: true,
-        analystApproved: true,
       }).exec(),
     ]);
-    return { articles, totalCount };
+  
+    return { articles, totalCount }; // Return the articles and total count for pagination
   }
+  
 
   // // Fetch all articles (without pagination)
   // async getAllArticles(): Promise<Article[]> {
@@ -64,28 +69,37 @@ export class ArticlesService {
 
   // Create a new article (auto-reject if a duplicate DOI or title is found)
   // Create a new article (auto-reject if a duplicate DOI or title is found)
-  async create(createArticleDto: any): Promise<Article> {
-    const existingArticle = await this.articleModel.findOne({
-      $or: [{ doi: createArticleDto.doi }, { title: createArticleDto.title }],
-    });
+ // Create a new article (auto-reject if a duplicate DOI or title is found)
+ async create(createArticleDto: any): Promise<Article> {
+  const existingArticle = await this.articleModel.findOne({
+    $or: [{ doi: createArticleDto.doi }, { title: createArticleDto.title }],
+  });
 
-    if (existingArticle) {
+  if (existingArticle) {
+    if (existingArticle.status === 'rejected') {
+      // Auto-reject with the same rejection reason if previously rejected
       return this.articleModel.create({
         ...createArticleDto,
         status: 'rejected',
-        rejectionReason: 'Duplicate submission detected (same DOI or title)',
+        rejectionReason: `Duplicate submission detected (rejected previously): ${existingArticle.rejectionReason}`,
+      });
+    } else if (existingArticle.status === 'approved') {
+      // Auto-reject if the article has been approved before
+      return this.articleModel.create({
+        ...createArticleDto,
+        status: 'rejected',
+        rejectionReason: 'Duplicate submission detected (already approved)',
       });
     }
-
-    const newArticle = new this.articleModel({
-      ...createArticleDto,
-      pubyear: createArticleDto.pubyear,
-      evidence: createArticleDto.evidence,  // Include evidence
-      status: 'pending',
-    });
-
-    return newArticle.save();
   }
+
+  // Create a new article if it's not a duplicate
+  const newArticle = new this.articleModel({
+    ...createArticleDto,
+    status: 'pending',
+  });
+  return newArticle.save();
+}
 
 
   // Update article verification status
@@ -140,6 +154,34 @@ export class ArticlesService {
     }
     return article;
   }
+
+  
+
+
+  async getUnverifiedArticles(page: number, limit: number): Promise<{ articles: Article[], totalCount: number }> {
+    const skip = (page - 1) * limit;
+
+    const [articles, totalCount] = await Promise.all([
+      this.articleModel
+        .find({
+          submitterVerified: false, // Unverified articles
+          moderatorApproved: false,
+          analystApproved: false,
+        })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.articleModel.countDocuments({
+        submitterVerified: false,
+        moderatorApproved: false,
+        analystApproved: false,
+      }).exec(),
+    ]);
+
+    return { articles, totalCount };
+  }
+
+
 
   // Search articles by criteria (title, author, doi, or status)
   // Search articles by criteria (title, author, doi, or status)
