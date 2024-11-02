@@ -5,20 +5,28 @@ export default function SubmissionForm() {
   const { register, handleSubmit } = useForm();
 
   const onSubmit = (data: any) => {
-    // Log form data to verify if pubyear is included
+    // Log the form data to ensure pubyear is present and properly formatted
     console.log("Form data being sent to the backend:", data);
 
-    // Submit form data to the backend
+ 
     fetch('http://localhost:8082/articles', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        pubYear: parseInt(data.pubYear), 
+      }),
     })
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to submit article: ${response.statusText}`);
+      }
+      return response.json();
+    })
     .then(data => console.log('Article submitted successfully:', data))
-    .catch(error => console.error('Error:', error));
+    .catch(error => console.error('Error submitting article:', error));
   };
 
   return (
@@ -31,18 +39,21 @@ export default function SubmissionForm() {
         <input {...register("source")} placeholder="Source" />
       </p>
       <p>
-        {/* Ensure the key is named `pubyear` to match the backend */}
-        <input {...register("pubyear")} placeholder="Publication Year" type="number" />
+        <input {...register("pubYear", { required: true })} placeholder="Publication Year" type="number" />
       </p>
       <p>
         <input {...register("doi")} placeholder="DOI" />
       </p>
-
-      <select {...register("linked_discussion")}>
-        <option value="">Select SE practice...</option>
-        <option value="TDD">TDD</option>
-        <option value="Mob Programming">Mob Programming</option>
-      </select>
+      <p>
+        <textarea {...register("evidence")} placeholder="Evidence" /> {/* Evidence input */}
+      </p>
+      <p>
+        <select {...register("claim")}>
+          <option value="">Select SE practice...</option>
+          <option value="TDD">TDD</option>
+          <option value="Mob Programming">Mob Programming</option>
+        </select>
+      </p>
       <input type="submit" />
     </form>
   );

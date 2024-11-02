@@ -1,73 +1,117 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ArticlesService } from './articles.service';
 import { Article } from './schemas/article.schema';
-
-/*
-so http://localhost:8082/articles/all is to show all
-http://localhost:8082/articles/rejected is for rejected
-
-
-*/
 
 @Controller('articles')
 export class ArticlesController {
   constructor(private readonly articlesService: ArticlesService) {}
 
-  // fetch fully verified article
-  @Get()
-  async getVerifiedArticles(): Promise<Article[]> {
-    return this.articlesService.getVerifiedArticles();
+  // Fetch and search articles with pagination
+  @Get('search')
+  async searchArticles(
+    @Query('query') query: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('claim') claim: string,
+    @Query('evidence') evidence: string, // Include evidence in the query
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10
+  ): Promise<{ articles: Article[], totalCount: number }> {
+    return this.articlesService.searchArticles({ query, startDate, endDate, claim, evidence }, page, limit);
   }
 
+  // Fetch all articles with pagination
+  @Get('all')
+  async getAllArticles(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10
+  ): Promise<{ articles: Article[], totalCount: number }> {
+    // Call the service method to fetch all articles with pagination
+    return this.articlesService.getAllArticles(page, limit);
+  }
 
-// Fetch all articles (general)
-@Get('all')
-async getAllArticles(): Promise<Article[]> {
-  return this.articlesService.getAllArticles();
+  // Fetch all rejected articles with pagination
+  @Get('rejected')
+  async getRejectedArticles(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10
+  ): Promise<{ articles: Article[], totalCount: number }> {
+    return this.articlesService.getRejectedArticles(page, limit);
+  }
+
+  // Reject an article with a reason
+
+@Post(':id/reject')
+async rejectArticle(
+  @Param('id') id: string,
+  @Body('reason') reason: string
+): Promise<Article> {
+  return this.articlesService.rejectArticle(id, reason);
 }
 
-// New endpoint to fetch all rejected articles
-@Get('rejected')
-async getRejectedArticles(): Promise<Article[]> {
-  return this.articlesService.getRejectedArticles();
-}
 
-
-  // Create a new article
   @Post()
-  async create(@Body() createArticleDto: any) {
+  async create(
+    @Body() createArticleDto: { title: string; authors: string; doi: string; pubYear: number } // Use "pubyear" (lowercase "y")
+  ): Promise<Article> {
+    console.log('Received createArticleDto:', createArticleDto);
+  
+    // Call the service to handle the creation
     return this.articlesService.create(createArticleDto);
-  }
-
-  // Fetch articles pending for moderation
-  @Get('moderation')
-  getPendingArticles(): Promise<Article[]> {
-    return this.articlesService.getPendingArticles();
-  }
-
-  @Post(':id/verify')
-  verifyArticle(@Param('id') id: string): Promise<Article> {
-    return this.articlesService.verifyArticle(id);
   }
   
 
+
+  // Fetch articles pending for moderation
+  @Get('moderation')
+  async getPendingArticles(): Promise<Article[]> {
+    return this.articlesService.getPendingArticles();
+  }
+
+  // Verify an article
+  @Post(':id/verify')
+  async verifyArticle(@Param('id') id: string): Promise<Article> {
+    return this.articlesService.verifyArticle(id);
+  }
+
   // Approve an article by a moderator
   @Post(':id/approve')
-  approveArticle(@Param('id') id: string): Promise<Article> {
+  async approveArticle(@Param('id') id: string): Promise<Article> {
     return this.articlesService.approveArticle(id);
   }
 
 
+  @Get('unverified')
+async getUnverifiedArticles(
+  @Query('page') page: number = 1,
+  @Query('limit') limit: number = 10
+): Promise<{ articles: Article[], totalCount: number }> {
+  return this.articlesService.getUnverifiedArticles(page, limit);
+}
 
-  // Reject an article with a reason
-  @Post(':id/reject')
-  rejectArticle(@Param('id') id: string, @Body('reason') reason: string): Promise<Article> {
-    return this.articlesService.rejectArticle(id, reason);
-  }
+@Get('verified')
+async getVerifiedArticles(
+  @Query('page') page: number = 1,
+  @Query('limit') limit: number = 10
+): Promise<{ articles: Article[], totalCount: number }> {
+  return this.articlesService.getVerifiedArticles(page, limit);
+}
 
-  // Analyst approval endpoint
-  @Post(':id/analyst-approve')
-  approveArticleByAnalyst(@Param('id') id: string): Promise<Article> {
-    return this.articlesService.approveArticleByAnalyst(id);
-  }
+
+@Get('analyst-queue')
+async getAnalystQueue(
+  @Query('page') page: number = 1,
+  @Query('limit') limit: number = 10
+): Promise<{ articles: Article[], totalCount: number }> {
+  return this.articlesService.getAnalystQueue(page, limit);
+}
+
+@Post(':id/analyst-edit')
+async updateAnalystEdit(
+  @Param('id') id: string,
+  @Body() updateDto: { claim: string; evidence: string }
+): Promise<Article> {
+  return this.articlesService.updateAnalystEdit(id, updateDto);
+}
+
 }
